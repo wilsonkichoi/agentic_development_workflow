@@ -1,0 +1,11 @@
+{
+  "name": "agentic-dev",
+  "description": "AI-Assisted Software Development Workflow — 5-phase pipeline (Research, Specification, Task Breakdown, Execution, Verification) with role-based agents, decision records, and task review files.",
+  "version": "1.4.0",
+  "author": {
+    "name": "Wilson Choi"
+  },
+  "repository": "https://github.com/wilsonkichoi/agentic_development_workflow",
+  "license": "MIT",
+  "keywords": ["workflow", "development", "planning", "specification", "execution", "agile"]
+}

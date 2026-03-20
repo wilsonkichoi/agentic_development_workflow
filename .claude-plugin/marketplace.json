@@ -1,0 +1,16 @@
+{
+  "name": "wilsonkichoi-agentic-dev",
+  "owner": {
+    "name": "Wilson Choi"
+  },
+  "metadata": {
+    "description": "AI-Assisted Software Development Workflow plugin"
+  },
+  "plugins": [
+    {
+      "name": "agentic-dev",
+      "source": "./",
+      "description": "5-phase development workflow with role-based agents, decision records, and task review files."
+    }
+  ]
+}
