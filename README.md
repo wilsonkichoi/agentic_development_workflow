@@ -2,7 +2,7 @@
 
 A structured, 5-phase framework for building software with AI coding agents. Gives LLMs clear specifications, atomic tasks, and role-matched expertise — so you get predictable, high-quality output instead of hoping the AI figures it out.
 
-> **Note:** I created this project to better understand agentic software development methodology. There may be a bunch of stupid stuff here. For real projects, check out [Superpowers](https://github.com/obra/superpowers), [GSD](https://github.com/gsd-build/get-shit-done), [Spec Kit](https://github.com/github/spec-kit), [EPCC](https://github.com/aws-solutions-library-samples/guidance-for-claude-code-with-amazon-bedrock/tree/main/assets/claude-code-plugins/plugins/epcc-workflow), [oh-my-claudecode](https://github.com/Yeachan-Heo/oh-my-claudecode) and incorporate whatever works for you.
+> **Note:** I created this project to better understand agentic software development methodology. There may be a bunch of stupid stuff here. For real projects, check out [Superpowers](https://github.com/obra/superpowers), [GSD](https://github.com/gsd-build/get-shit-done), [Spec Kit](https://github.com/github/spec-kit), [EPCC](https://github.com/aws-solutions-library-samples/guidance-for-claude-code-with-amazon-bedrock/blob/main/assets/claude-code-plugins/README.md), [oh-my-claudecode](https://github.com/Yeachan-Heo/oh-my-claudecode) and incorporate whatever works for you.
 
 ## The Problem
 
@@ -194,7 +194,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, testing checklist,
 - [Superpowers](https://github.com/obra/superpowers) — composable skills, TDD-first, subagent-driven execution
 - [GSD (Get Shit Done)](https://github.com/gsd-build/get-shit-done) — meta-prompting, wave-based parallel execution, context rot mitigation
 - [Spec Kit](https://github.com/github/spec-kit) — spec-driven development, multi-agent support, extension ecosystem
-- [EPCC Workflow](https://github.com/aws-solutions-library-samples/guidance-for-claude-code-with-amazon-bedrock/tree/main/assets/claude-code-plugins/plugins/epcc-workflow) — explore-plan-code-commit, session continuity, feature tracking
+- [EPCC Workflow](https://github.com/aws-solutions-library-samples/guidance-for-claude-code-with-amazon-bedrock/blob/main/assets/claude-code-plugins/README.md) — explore-plan-code-commit, session continuity, feature tracking
 - [oh-my-claudecode](https://github.com/Yeachan-Heo/oh-my-claudecode) — reference for skill implementation and architecture
 - [Anthropic Skills](https://github.com/anthropics/skills) — official skills reference
 - [Agency Agents](https://github.com/msitarzewski/agency-agents) — role-based agent definitions (adapted into `templates/roles/`)
