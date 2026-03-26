@@ -42,8 +42,6 @@ Each phase produces persistent documents (SPEC.md, PLAN.md, PROGRESS.md, decisio
 |-----------|-------|-------------|
 | **Skills** | 6 | `init-project`, `research`, `spec`, `plan`, `execute`, `verify` |
 | **Agents** | 13 | Software Architect, Backend Engineer, QA Engineer, Security Reviewer, and more |
-| **Templates** | 5 | Phase prompt templates (copy-paste ready for any AI tool) |
-| **Role Definitions** | 13 | Role prompts for non-Claude-Code tools |
 
 ## Installation
 
@@ -64,17 +62,11 @@ After installation:
 - Agents appear in `/agents` (e.g., `agentic-dev:backend-engineer`)
 - Auto-updates when the repo is updated
 
-### Other AI Tools (Copilot CLI, Cursor, Windsurf, Codex, Gemini)
+### Copilot CLI
 
 ```bash
-# Clone the repo
-git clone https://github.com/wilsonkichoi/agentic_development_workflow.git
-
-# Initialize a new project
-./agentic_development_workflow/init.sh /path/to/my-project
+copilot plugin install wilsonkichoi/agentic_development_workflow
 ```
-
-This copies phase templates and role definitions into your project. Use them by copy-pasting into your tool.
 
 ### Local Plugin Testing
 
@@ -95,26 +87,69 @@ claude --plugin-dir /path/to/agentic_development_workflow
 
 **Important:** After updating, start a new session (`/clear` or new terminal). Skill file paths are cached per session and `/reload-plugins` may not fully refresh them.
 
-### init.sh Projects
+### Migrating from 1.x to 2.0.0
+
+v2.0.0 removes the `templates/` directory. Phase prompts are now inline in each skill's `SKILL.md`, and role definitions live in `agents/` as the single source of truth.
+
+**What changed:**
+
+| 1.x | 2.0.0 |
+|-----|-------|
+| `templates/phases/*.md` | Merged into `skills/*/SKILL.md` |
+| `templates/roles/*.md` | Replaced by `agents/*.agent.md` |
+| `skills/*/template.md` | Merged into `skills/*/SKILL.md` |
+| `init.sh --update-templates` | Deprecated (prints notice and exits) |
+| `init.sh` copies templates into projects | `init.sh` only creates `workflow/` structure |
+
+**Step 1 — Update the plugin:**
 
 ```bash
-# Refresh templates in an existing project (preserves all project docs)
-./agentic_development_workflow/init.sh /path/to/my-project --update-templates
+# Claude Code
+/plugin marketplace update wilsonkichoi-agentic-dev
+
+# Copilot CLI
+copilot plugin update wilsonkichoi/agentic_development_workflow
+
 ```
+
+**Step 2 — Clean up existing projects:**
+
+Remove the legacy `templates/` directory from any project that was initialized with 1.x:
+
+```bash
+# From your project root
+rm -rf templates/
+```
+
+**Step 3 — Update your project instruction file:**
+
+If your project's `CLAUDE.md` references `templates/`, update those references:
+
+- Phase prompts: replace `templates/phases/01-research.md` → `/agentic-dev:research` (or read `skills/research/SKILL.md` directly)
+- Role definitions: replace `templates/roles/backend-engineer.md` → `agents/backend-engineer.agent.md` (or use `/agents` in the plugin)
+
+**Step 4 — Verify:**
+
+```bash
+# templates/ should not exist in your project
+ls templates/ 2>&1  # Expected: "No such file or directory"
+
+# No stale references in your project instruction file
+grep "templates/" CLAUDE.md  # Expected: no output
+```
+
+After updating, start a new session (`/clear` or new terminal) to pick up the new skill files.
 
 ## Usage
 
 ### Starting a New Project
 
 ```bash
-# Claude Code (from parent directory)
+# From parent directory
 /agentic-dev:init-project ./my-project
 
-# Claude Code (already inside the project directory)
+# Already inside the project directory
 /agentic-dev:init-project .
-
-# Other tools
-./agentic_development_workflow/init.sh ./my-project
 ```
 
 This creates:
@@ -130,14 +165,11 @@ my-project/
 │   │   └── reviews/          # Per-task review files
 │   ├── decisions/            # Architecture Decision Records
 │   └── retro/                # Retrospectives
-├── templates/                # Phase templates + role definitions
 ├── src/
 └── tests/
 ```
 
 ### Running Phases
-
-**Claude Code plugin:**
 
 | Phase | Command | What It Does |
 |-------|---------|-------------|
@@ -146,8 +178,6 @@ my-project/
 | 3. Task Breakdown | `/agentic-dev:plan` | Decompose into atomic tasks with wave grouping |
 | 4. Execution | `/agentic-dev:execute` | Implement one task with role-matched agent |
 | 5. Verification | `/agentic-dev:verify` | End-to-end testing + retrospective |
-
-**Other tools:** Open the corresponding template from `templates/phases/`, fill in the placeholders, paste into your tool.
 
 ### Using Agents (Phase 4)
 
@@ -186,7 +216,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, testing checklist,
 
 - [WORKFLOW.md](WORKFLOW.md) — Full workflow reference with all phases, principles, cost optimization, and tool-specific guides
 - [CI_CD.md](CI_CD.md) — CI/CD pipeline design notes
-- [templates/roles/README.md](templates/roles/README.md) — Role registry with phase-to-role mapping
 - [examples/temperature-converter/](examples/temperature-converter/) — End-to-end example showing expected output of each workflow phase
 
 ## References
@@ -197,7 +226,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, testing checklist,
 - [EPCC Workflow](https://github.com/aws-solutions-library-samples/guidance-for-claude-code-with-amazon-bedrock/blob/main/assets/claude-code-plugins/README.md) — explore-plan-code-commit, session continuity, feature tracking
 - [oh-my-claudecode](https://github.com/Yeachan-Heo/oh-my-claudecode) — reference for skill implementation and architecture
 - [Anthropic Skills](https://github.com/anthropics/skills) — official skills reference
-- [Agency Agents](https://github.com/msitarzewski/agency-agents) — role-based agent definitions (adapted into `templates/roles/`)
+- [Agency Agents](https://github.com/msitarzewski/agency-agents) — role-based agent definitions (adapted into `agents/`)
 - [PUA](https://github.com/tanweai/pua) — debugging persistence framework (adapted into Phase 4)
 
 ## License

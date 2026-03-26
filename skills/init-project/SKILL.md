@@ -7,7 +7,7 @@ disable-model-invocation: true
 
 ## What This Skill Does
 
-Scaffolds a new project with the AI-Assisted Development Workflow: directories for all 5 phases, role-based templates, placeholder files (PROGRESS.md, decisions index), and a starter CLAUDE.md.
+Scaffolds a new project with the AI-Assisted Development Workflow: directories for all 5 phases, placeholder files (PROGRESS.md, decisions index), and a starter CLAUDE.md.
 
 ## Steps
 
@@ -17,32 +17,15 @@ Target is `$ARGUMENTS`. If not provided, ask the user. Resolve relative paths ag
 
 ### Step 2: Check if already initialized
 
-If the target has `templates/phases/` and `workflow/plan/`, ask: update templates only, full re-init, or cancel.
+If the target has `workflow/plan/`, ask: full re-init or cancel.
 
 ### Step 3: Create directory structure
 
 ```bash
-mkdir -p "$TARGET"/{workflow/{research/{manual,final/references},spec,plan/reviews,decisions,retro},src,tests,templates}
+mkdir -p "$TARGET"/{workflow/{research/{manual,final/references},spec,plan/reviews,decisions,retro},src,tests}
 ```
 
-### Step 4: Copy templates from plugin
-
-Copy the phase templates and role definitions into the project. The source templates are in this plugin's `templates/` directory.
-
-```bash
-cp -r "${CLAUDE_PLUGIN_ROOT}/templates/phases" "$TARGET/templates/phases"
-cp -r "${CLAUDE_PLUGIN_ROOT}/templates/roles" "$TARGET/templates/roles"
-```
-
-If `${CLAUDE_PLUGIN_ROOT}` is not available, search for the templates:
-
-```bash
-PLUGIN_DIR=$(find ~/.claude/plugins/cache -path "*/agentic-dev/*/templates/phases" -type d 2>/dev/null | head -1 | sed 's|/templates/phases$||')
-```
-
-If templates still can't be found, create the directories empty and tell the user to populate them manually.
-
-### Step 5: Create placeholder files
+### Step 4: Create placeholder files
 
 Create `.gitkeep` in empty directories.
 
@@ -72,7 +55,7 @@ Create `workflow/decisions/README.md`:
 |----|-------|-------|--------|
 ```
 
-### Step 6: Generate README.md
+### Step 5: Generate README.md
 
 Create README.md with placeholder sections that phases will fill in:
 
@@ -112,15 +95,57 @@ Create README.md with placeholder sections that phases will fill in:
 {{FILL_IN — e.g., MIT}}
 ```
 
-### Step 7: Generate CLAUDE.md
+### Step 6: Generate CLAUDE.md
 
-Create CLAUDE.md with project name placeholders, phase quick reference table, and key document links. Use the same template as in [template.md](template.md).
+Create CLAUDE.md with the following content:
 
-### Step 8: Create .gitignore if missing
+```markdown
+# Project Instructions
+
+## Project
+- Name: {{PROJECT_NAME}}
+- Description: {{ONE_LINE_DESCRIPTION}}
+
+## Workflow
+
+This project follows the AI-Assisted Software Development Workflow.
+
+| Phase | Skill | Mode |
+|-------|-------|------|
+| 1. Research | `/agentic-dev:research` | Normal |
+| 2. Specification | `/agentic-dev:spec` | Plan/read-only |
+| 3. Task Breakdown | `/agentic-dev:plan` | Normal |
+| 4. Execution | `/agentic-dev:execute` | Worktree |
+| 5. Verification | `/agentic-dev:verify` | Normal |
+
+### Key Documents
+- Spec: `workflow/spec/SPEC.md`
+- Plan: `workflow/plan/PLAN.md`
+- Progress: `workflow/plan/PROGRESS.md`
+- Decisions: `workflow/decisions/`
+
+## Architecture
+
+{{FILL_IN_AFTER_PHASE_2 — architecture summary, 5-10 lines}}
+
+## Build & Test
+
+{{FILL_IN — e.g., npm install, npm test, npm run lint}}
+
+## Tooling Preferences
+
+{{FILL_IN — e.g., Package manager: uv, Python version: >=3.12, Linter: ruff, Formatter: ruff format}}
+
+## Coding Standards
+
+{{FILL_IN_AFTER_PHASE_2 — or link to workflow/spec/SPEC.md}}
+```
+
+### Step 7: Create .gitignore if missing
 
 Standard entries: .DS_Store, .env, editor directories.
 
-### Step 9: Report next steps
+### Step 8: Report next steps
 
 1. Edit README.md and CLAUDE.md — fill in project name, description, and tooling preferences
 2. Place research materials in `workflow/research/manual/`
@@ -130,4 +155,3 @@ Standard entries: .DS_Store, .env, editor directories.
 
 - Do NOT overwrite existing project files without asking
 - The `{{placeholders}}` in CLAUDE.md are for the human to fill in — do not resolve them
-- Prefer using `${CLAUDE_PLUGIN_ROOT}` for template paths when available

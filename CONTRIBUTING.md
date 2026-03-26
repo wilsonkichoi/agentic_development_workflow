@@ -6,32 +6,26 @@ Guide for working on the Agentic Development Workflow plugin.
 
 ```
 .claude-plugin/          Plugin manifest + marketplace definition
-  plugin.json            Name, version, description, keywords
+  plugin.json            Name, version, description, keywords, component paths
   marketplace.json       Self-hosted marketplace for distribution
 
-skills/                  Claude Code skills (6 total)
+skills/                  Skills (6 total, each is a single SKILL.md)
   init-project/          /agentic-dev:init-project
   research/              /agentic-dev:research (Phase 1)
   spec/                  /agentic-dev:spec (Phase 2)
   plan/                  /agentic-dev:plan (Phase 3)
   execute/               /agentic-dev:execute (Phase 4)
   verify/                /agentic-dev:verify (Phase 5)
-    SKILL.md             Skill definition (loaded when invoked)
-    template.md          Phase template (supporting file, COPY of templates/phases/)
 
 agents/                  Role-based agents (13 total, show in /agents)
-  software-architect.md
-  backend-engineer.md
+  software-architect.agent.md
+  backend-engineer.agent.md
   ...
 
-templates/               Source of truth for phase templates + role definitions
-  phases/                Phase prompt templates (copied to projects by init.sh)
-  roles/                 Role definitions (copied to projects by init.sh)
-
-init.sh                  Project scaffolding for non-Claude-Code tools
+init.sh                  Project scaffolding (standalone, without plugin)
 WORKFLOW.md              Full workflow reference documentation
 CI_CD.md                 CI/CD pipeline design notes
-Makefile                 Build commands (sync, check-sync, test, diff)
+Makefile                 Build commands (test)
 examples/                Example projects showing workflow output
 tests/                   Automated test suite
 ```
@@ -53,67 +47,36 @@ claude --plugin-dir .
 /agents          # Should show agentic-dev:software-architect, backend-engineer, etc.
 ```
 
-## Working on Templates
-
-Phase templates have **two copies** that must stay in sync:
-
-| Source of truth | Copy (bundled with plugin) |
-|-----------------|---------------------------|
-| `templates/phases/01-research.md` | `skills/research/template.md` |
-| `templates/phases/02-specification.md` | `skills/spec/template.md` |
-| `templates/phases/03-task-breakdown.md` | `skills/plan/template.md` |
-| `templates/phases/04-execution.md` | `skills/execute/template.md` |
-| `templates/phases/05-verification.md` | `skills/verify/template.md` |
-
-**Always edit `templates/phases/` first**, then sync:
-
-```bash
-# After editing any file in templates/phases/
-make sync         # Copies templates → skill bundles
-make check-sync   # Verifies all copies match
-```
-
-Never edit `skills/*/template.md` directly — it will be overwritten by `make sync`.
-
 ## Working on Skills
 
-Each skill lives in `skills/<name>/` with two files:
-
-- **SKILL.md** — The skill definition. Loaded into Claude's context when the skill is invoked. Contains: YAML frontmatter (name, description, triggers), orchestration instructions, references to template.md.
-- **template.md** — The phase template (supporting file). Referenced from SKILL.md via `[template.md](template.md)`. Claude reads it on demand.
+Each skill lives in `skills/<name>/SKILL.md` — a single file containing YAML frontmatter and the full phase prompt.
 
 ### Skill guidelines
 
-- Keep SKILL.md under 500 lines. If it's getting long, move detail into supporting files.
+- Keep SKILL.md focused. The frontmatter defines metadata; the body is the prompt Claude follows.
 - The `description` field in YAML frontmatter is the primary trigger mechanism. Make it "pushy" — include multiple phrasings of when to use it. Claude tends to undertrigger rather than overtrigger.
 - `disable-model-invocation: true` means the skill is user-only (invoked via `/agentic-dev:<name>`). All our phase skills use this since they have side effects.
 - Test the skill by running `claude --plugin-dir .` and invoking it.
 
 ### Example SKILL.md structure
 
-```yaml
+```markdown
 ---
 name: research
 description: "Use for Phase 1... Also trigger on 'start research', 'phase 1', etc."
 disable-model-invocation: true
 ---
-```
 
-```markdown
 ## What This Skill Does
 Brief description.
 
-## Instructions
-Read [template.md](template.md) for the detailed phase template.
-Key points and Claude-Code-specific instructions here.
-
-## Output
-What gets produced.
+## Prompt
+The full phase prompt with placeholders, instructions, constraints, etc.
 ```
 
 ## Working on Agents
 
-Agent files live in `agents/` as standalone markdown files. They appear in `/agents` when the plugin is installed.
+Agent files live in `agents/` as `*.agent.md` files (compatible with both Claude Code and Copilot CLI). They appear in `/agents` when the plugin is installed.
 
 ### Agent file format
 
@@ -141,13 +104,18 @@ You are a [role description].
 - Keep agents focused on priorities, methodology, and anti-patterns. No fluff.
 - Each agent should be 25-35 lines. If it's longer, you're probably over-specifying.
 
+### Copilot CLI compatibility
+
+Both Claude Code and Copilot CLI use `<name>.agent.md` as the agent file format. The `.agent.md` files are the canonical source of truth and are tracked in git.
+
 ## Working on init.sh
 
-`init.sh` is the fallback scaffolding tool for users who don't use Claude Code (Copilot CLI, Cursor, Windsurf, etc.). It:
+`init.sh` is a standalone scaffolding tool. It:
 
 1. Creates the `workflow/` directory structure
-2. Copies `templates/phases/` and `templates/roles/` into the project
-3. Generates starter CLAUDE.md, PROGRESS.md, decisions/README.md, .gitignore
+2. Generates starter CLAUDE.md, PROGRESS.md, decisions/README.md, .gitignore
+
+Note: `init.sh` no longer copies templates into projects. Phase prompts live in the plugin's `skills/` directory.
 
 ### Testing init.sh
 
@@ -157,10 +125,6 @@ You are a [role description].
 ls -R /tmp/test-project          # Verify structure
 cat /tmp/test-project/CLAUDE.md  # Verify generated content
 
-# Test template update
-./init.sh /tmp/test-project --update-templates
-diff templates/phases/01-research.md /tmp/test-project/templates/phases/01-research.md  # Should match
-
 # Clean up
 rm -rf /tmp/test-project
 ```
@@ -168,10 +132,6 @@ rm -rf /tmp/test-project
 Any change to the project folder structure (new directories, new placeholder files) must be reflected in init.sh.
 
 ## What to Pay Attention To
-
-### Template / skill drift
-
-The most common mistake. If you edit a phase template but forget `make sync`, the plugin skill will serve stale content. Always run `make check-sync` before committing.
 
 ### Skill descriptions
 
@@ -187,29 +147,24 @@ Bump the `version` field in `.claude-plugin/plugin.json` for releases. Users wit
 
 ### Don't break init.sh
 
-Non-Claude-Code users depend on init.sh. If you add a new directory to the project structure, add it to init.sh too. If you add a new role, add it to `templates/roles/` (init.sh copies this whole directory).
-
-### Two audiences
-
-Every structural change potentially affects both:
-1. **Plugin users** — skills in `skills/`, agents in `agents/`
-2. **init.sh users** — templates in `templates/phases/`, roles in `templates/roles/`
+If you change the project directory structure, update init.sh to match.
 
 ## Testing Locally
 
 Run the full automated test suite:
 
 ```bash
-make test     # Runs tests/test.sh — check-sync, init.sh, example validation, pytest
+make test     # Runs tests/test.sh
 ```
 
 The test suite (`tests/test.sh`) covers:
-1. **check-sync** — template copies match source
-2. **plugin-validate** — `claude plugin validate .` (skipped if CLI not available)
-3. **init-fresh** — `init.sh` creates correct directory structure
-4. **init-update** — `init.sh --update-templates` refreshes templates
-5. **example-structure** — `examples/temperature-converter/` has all expected files
-6. **example-tests** — pytest passes on the example project
+1. **plugin-validate** — `claude plugin validate .` (skipped if CLI not available)
+2. **init-fresh** — `init.sh` creates correct directory structure (no legacy template dirs)
+3. **update-templates-deprecated** — `--update-templates` prints deprecation notice
+4. **skill-files** — each skill has SKILL.md, no template.md
+5. **no-stale-references** — no legacy template path references remain in source
+6. **example-structure** — `examples/temperature-converter/` has all expected files
+7. **example-tests** — pytest passes on the example project
 
 For a complete pre-PR checklist, also do the manual checks:
 
@@ -237,8 +192,7 @@ The `examples/temperature-converter/` directory serves as the canonical referenc
 
 Include:
 - **What** changed and **why**
-- Which components are affected (skills, agents, templates, init.sh, plugin manifest)
-- Whether `make sync` was run (if templates changed)
+- Which components are affected (skills, agents, init.sh, plugin manifest)
 - How you tested the change
 
 ### Before submitting
@@ -252,8 +206,6 @@ Include:
 ### Review criteria
 
 PRs are reviewed for:
-- Template/skill sync (no drift)
-- Both audiences served (plugin users AND init.sh users)
 - Skill descriptions are trigger-friendly
 - Agent descriptions are present
 - init.sh reflects any structural changes

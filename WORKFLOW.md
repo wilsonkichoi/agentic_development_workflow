@@ -1,6 +1,6 @@
 # AI-Assisted Software Development Workflow
 
-A practical, tool-agnostic framework for getting the best development outcomes from LLMs while keeping costs low.
+A structured, 5-phase framework for building software with AI coding agents (Claude Code + Copilot CLI).
 
 ## Quick Start
 
@@ -26,16 +26,10 @@ A practical, tool-agnostic framework for getting the best development outcomes f
 
 The plugin includes 6 skills (init + 5 phases) and 13 role-based agents. Agents appear in `/agents` — use them for role-matched execution in Phase 4.
 
-### Other Tools (Copilot CLI, Cursor, Windsurf, Codex, Gemini)
+### Copilot CLI
 
 ```bash
-# Clone the repo
-git clone https://github.com/wilsonkichoi/agentic_development_workflow.git
-
-# Initialize a new project
-./agentic_development_workflow/init.sh /path/to/my-project
-
-# Use templates manually — copy-paste from templates/phases/ into your tool
+copilot plugin install wilsonkichoi/agentic_development_workflow
 ```
 
 ### Local plugin testing (development)
@@ -52,9 +46,8 @@ claude --plugin-dir ./agentic_development_workflow
 2. **Specs survive sessions.** Persistent documents (SPEC.md, HANDOFF.md, PLAN.md) bridge context between sessions and prevent context rot.
 3. **Human gates between phases.** Every phase produces reviewable artifacts. Nothing moves forward without human approval.
 4. **One task per loop.** Execute tasks atomically with fresh context. Prevents context degradation and makes failures easy to isolate.
-5. **Tool-agnostic core.** The workflow, specs, and prompts work with any agentic coding tool. Tool-specific optimizations are optional.
-6. **Automated verification before human review.** Every task must pass automated checks (lint, type check, tests) before a human reviews the diff.
-7. **Every merge deploys to a verifiable environment.** Merged code must be deployable and verifiable in a real (or realistic) environment — not just passing local tests. See [CI_CD.md](CI_CD.md) for pipeline design notes.
+5. **Automated verification before human review.** Every task must pass automated checks (lint, type check, tests) before a human reviews the diff.
+6. **Every merge deploys to a verifiable environment.** Merged code must be deployable and verifiable in a real (or realistic) environment — not just passing local tests. See [CI_CD.md](CI_CD.md) for pipeline design notes.
 
 ---
 
@@ -80,7 +73,7 @@ Research  -->  Specification  -->  Task Breakdown  -->  Execution  -->  Verifica
 **Process:**
 
 **Stage 1 — Human Manual Research:**
-1. Conduct manual research using any tools available (Gemini Pro Deep Research, NotebookLM, web search, stakeholder conversations, etc.).
+1. Conduct manual research using any tools available (deep research tools, web search, stakeholder conversations, etc.).
 2. Gather materials in any format: markdown, PDF, DOCX, URLs, images, conversations, git repos, etc.
 3. Materials should cover: business objectives, high-level design intent (UI, UX, architecture), external references, constraints.
 4. Store all materials in `workflow/research/manual/`.
@@ -99,7 +92,7 @@ Research  -->  Specification  -->  Task Breakdown  -->  Execution  -->  Verifica
 
 **Gate:** Human reviews `workflow/research/final/research.md`. Confirms all business logic and constraints are captured. Verifies no important resources were silently skipped. If changes are needed, use the `*FEEDBACK:*` / `*AI:*` discussion protocol in `workflow/research/final/rfc.md` to iterate until approved.
 
-**Template:** [`templates/phases/01-research.md`](templates/phases/01-research.md)
+**Skill:** [`skills/research/SKILL.md`](skills/research/SKILL.md)
 
 ---
 
@@ -130,7 +123,7 @@ By default, the specification is generated from a Software Architect perspective
 | Multiple integration points (>3 external systems) | Security Reviewer + Domain Specialist |
 | Team size > 3 | All roles |
 
-See [`templates/roles/README.md`](templates/roles/README.md) for role definitions and usage instructions.
+Role definitions are available as agents — see `/agents` when using the plugin, or browse `agents/` in the repo.
 
 **Outputs:**
 - `workflow/spec/SPEC.md` — milestones, architecture, DB schemas, API contracts, coding standards, NFRs, negative requirements, diagrams
@@ -138,7 +131,7 @@ See [`templates/roles/README.md`](templates/roles/README.md) for role definition
 
 **Gate:** Human reviews SPEC.md and HANDOFF.md line by line. **This is the most critical gate.** A bad spec cascades into everything downstream. If changes are needed, use the `*FEEDBACK:*` / `*AI:*` discussion protocol in `workflow/spec/rfc.md` to iterate until approved.
 
-**Template:** [`templates/phases/02-specification.md`](templates/phases/02-specification.md)
+**Skill:** [`skills/spec/SKILL.md`](skills/spec/SKILL.md)
 
 ---
 
@@ -175,7 +168,7 @@ See [`templates/roles/README.md`](templates/roles/README.md) for role definition
 
 **Gate:** Human reviews PLAN.md. Checks tasks are atomic, acceptance criteria are testable, dependencies make sense, test tasks are separated from implementation tasks. If changes are needed, use the `*FEEDBACK:*` / `*AI:*` discussion protocol in `workflow/plan/rfc.md` to iterate until approved.
 
-**Template:** [`templates/phases/03-task-breakdown.md`](templates/phases/03-task-breakdown.md)
+**Skill:** [`skills/plan/SKILL.md`](skills/plan/SKILL.md)
 
 ---
 
@@ -185,12 +178,12 @@ See [`templates/roles/README.md`](templates/roles/README.md) for role definition
 
 **Model:** Highest reasoning (Opus 4.6). Best model produces best code. On request-based billing (Copilot CLI), a single request costs the same regardless of output volume — use the best model available. If request-based billing is unavailable, use Claude Code with Opus directly.
 
-**Inputs:** `workflow/plan/PLAN.md`, `workflow/spec/SPEC.md`, the codebase, relevant role definition from `templates/roles/`.
+**Inputs:** `workflow/plan/PLAN.md`, `workflow/spec/SPEC.md`, the codebase, relevant agent role (see `/agents`).
 
 **Process:**
 1. **Isolate:** Create a git branch `task/X.Y-short-title` (e.g., `task/1.1-implement-functions`). Do NOT work on `main`. With Claude Code: `claude -w task/X.Y-short-title --model opus`.
 2. **Pick next task:** Read PLAN.md, find the next incomplete task.
-3. **Match role:** Use the appropriate role definition for the task type (frontend dev for UI, backend engineer for API, etc.). See [`templates/roles/README.md`](templates/roles/README.md).
+3. **Match role:** Activate the appropriate agent for the task type (frontend dev for UI, backend engineer for API, etc.). See `/agents` for available roles.
 4. **Execute one task.** Feed the model the role definition + task description + relevant spec section.
 5. **Test separation:** If this is a feature implementation task, its corresponding test task must be executed in a separate session with NO shared context. The test author sees only the spec, public interface, and acceptance criteria — not the implementation.
 6. **Verify:** Agent runs linting, type checks, tests, and acceptance criteria before marking done.
@@ -226,7 +219,7 @@ Use this 5-step framework. Attempt ALL steps before escalating.
 
 **Gate:** Human reviews the diff and task review file. Code is NOT merged until human approves and instructs PR creation.
 
-**Template:** [`templates/phases/04-execution.md`](templates/phases/04-execution.md)
+**Skill:** [`skills/execute/SKILL.md`](skills/execute/SKILL.md)
 
 ---
 
@@ -252,7 +245,7 @@ Use this 5-step framework. Attempt ALL steps before escalating.
 
 **Gate:** Human confirms merge. If changes are needed to the retrospective, use the `*FEEDBACK:*` / `*AI:*` discussion protocol in `workflow/retro/review.md` to iterate. Return to Phase 3 for the next milestone (or Phase 1/2 if the spec needs revision).
 
-**Template:** [`templates/phases/05-verification.md`](templates/phases/05-verification.md)
+**Skill:** [`skills/verify/SKILL.md`](skills/verify/SKILL.md)
 
 ---
 
@@ -289,24 +282,18 @@ project-root/
 
 ### Project Instruction Files
 
-Every tool has its own format. Keep it lean (<500 lines) and link to spec docs for details:
+Keep it lean (<500 lines) and link to spec docs for details:
 
 | Tool | File |
 |------|------|
 | Claude Code | `CLAUDE.md` |
 | Copilot CLI | `.github/copilot-instructions.md` |
-| Cursor | `.cursorrules` |
-| Windsurf | `.windsurfrules` |
-| Codex CLI | `AGENTS.md` |
-| Gemini CLI | `GEMINI.md` |
 
 ---
 
 ## Roles
 
-Role definitions live in `templates/roles/`. Each role is a prompt snippet composed with the phase template to provide domain-specific expertise and constraints.
-
-See [`templates/roles/README.md`](templates/roles/README.md) for the full role registry, phase mapping, and usage instructions.
+Role definitions live in `agents/`. Each role is a system prompt providing domain-specific expertise and constraints. When using the plugin, roles are available via `/agents`.
 
 Roles are adapted from [agency-agents](https://github.com/msitarzewski/agency-agents) with modifications for this workflow's phase structure.
 
@@ -519,10 +506,6 @@ copilot --model claude-opus-4.6 --autopilot --max-autopilot-continues 30 \
 
 **Context limit:** ~128K tokens for Opus 4.6 (as of March 2026 — this is a moving target that changes frequently). Auto-compaction triggers at 95%.
 
-### Cursor / Windsurf / Gemini CLI / Codex CLI
-
-Template prompts work as-is via copy-paste. Use each tool's native project instruction file with the same content you'd put in CLAUDE.md.
-
 ---
 
 ## Document Lifecycle
@@ -554,27 +537,6 @@ Template prompts work as-is via copy-paste. Use each tool's native project instr
 
 ---
 
-## Using the Prompt Templates
-
-Templates live in `templates/phases/`. Role definitions live in `templates/roles/`. Each is self-contained and copy-paste ready.
-
-**To use a template:**
-1. Open the template file for your current phase.
-2. If the task requires a specific role, also open the role file from `templates/roles/`.
-3. Copy the role definition (if applicable), then the phase prompt.
-4. Replace the `{{placeholders}}` with your project details.
-5. Paste into your tool (Claude Code, Copilot CLI, Cursor, etc.).
-
-**To compose templates:** You can combine multiple templates in one prompt:
-```
-Read templates/roles/backend-engineer.md and adopt this role.
-Read templates/phases/04-execution.md and follow its instructions.
-```
-
-**To add specialized templates:** Create a `templates/research/` directory for domain-specific research prompts (UI design, system architecture, business analysis, etc.). These compose freely with the phase templates.
-
----
-
 ## References
 
 ### AI Coding Frameworks
@@ -583,7 +545,7 @@ Read templates/phases/04-execution.md and follow its instructions.
 - [Craftsman](https://github.com/gsemet/Craftsman) — plan mode + execution mode, model tiering
 - [GSD + VS Code Copilot Guide](https://github.com/KickdriveOliver/get-shit-done/blob/feature/vscode-copilot-win-no-git/GSD-VSCODE-GUIDE.md)
 - [PUA](https://github.com/tanweai/pua) — debugging persistence framework, 5-step debugging methodology (adapted into Phase 4)
-- [Agency Agents](https://github.com/msitarzewski/agency-agents) — role-based agent definitions (adapted into `templates/roles/`)
+- [Agency Agents](https://github.com/msitarzewski/agency-agents) — role-based agent definitions (adapted into `agents/`)
 
 ### Claude Code
 - [Agent Teams](https://code.claude.com/docs/en/agent-teams)

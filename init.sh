@@ -13,35 +13,32 @@ Usage: $(basename "$0") <target-directory> [options]
 Initialize a new project with the AI-Assisted Development Workflow.
 
 Options:
-  --update-templates    Only update templates/ in an existing project
   -h, --help            Show this help
 
 For Claude Code users, install the plugin instead (recommended):
   /plugin marketplace add wilsonkichoi/agentic_development_workflow
   /plugin install agentic-dev@wilsonkichoi-agentic-dev
 
+For Copilot CLI users:
+  copilot plugin install wilsonkichoi/agentic_development_workflow
+
 Examples:
   $(basename "$0") /path/to/my-project          # Full init
-  $(basename "$0") /path/to/my-project --update-templates  # Refresh templates only
 EOF
 }
 
 # Parse args
 TARGET=""
-UPDATE_ONLY=false
-INSTALL_SKILL=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --update-templates) UPDATE_ONLY=true; shift ;;
+        --update-templates) echo "Deprecated: templates are no longer copied into projects."; echo "Phase prompts are now part of the plugin's skills. Install the plugin to get updates."; exit 0 ;;
         --install-skill) echo "Deprecated: use the Claude Code plugin instead."; echo "  /plugin marketplace add wilsonkichoi/agentic_development_workflow"; exit 0 ;;
         -h|--help) usage; exit 0 ;;
         -*) echo "Error: unknown option $1"; usage; exit 1 ;;
         *) TARGET="$1"; shift ;;
     esac
 done
-
-# --- Install skill mode (deprecated) ---
 
 # --- Validate target ---
 if [ -z "$TARGET" ]; then
@@ -55,21 +52,6 @@ fi
 mkdir -p "$TARGET"
 TARGET="$(cd "$TARGET" && pwd)"
 
-# --- Update templates only ---
-if [ "$UPDATE_ONLY" = true ]; then
-    if [ ! -d "$TARGET/templates" ]; then
-        echo "Error: $TARGET/templates not found. Is this an initialized project?"
-        exit 1
-    fi
-
-    echo "Updating templates in $TARGET..."
-    rm -rf "$TARGET/templates/phases" "$TARGET/templates/roles"
-    cp -r "$SCRIPT_DIR/templates/phases" "$TARGET/templates/phases"
-    cp -r "$SCRIPT_DIR/templates/roles" "$TARGET/templates/roles"
-    echo "Done. Templates updated."
-    exit 0
-fi
-
 # --- Full initialization ---
 echo "Initializing project at $TARGET..."
 
@@ -82,11 +64,6 @@ mkdir -p "$TARGET/workflow/decisions"
 mkdir -p "$TARGET/workflow/retro"
 mkdir -p "$TARGET/src"
 mkdir -p "$TARGET/tests"
-mkdir -p "$TARGET/templates"
-
-# Copy templates
-cp -r "$SCRIPT_DIR/templates/phases" "$TARGET/templates/phases"
-cp -r "$SCRIPT_DIR/templates/roles" "$TARGET/templates/roles"
 
 # Create .gitkeep files for empty dirs
 touch "$TARGET/workflow/research/manual/.gitkeep"
@@ -171,24 +148,14 @@ cat > "$TARGET/CLAUDE.md" << 'EOF'
 ## Workflow
 
 This project follows the AI-Assisted Software Development Workflow.
-See `templates/phases/` for phase-specific prompts and `templates/roles/` for role definitions.
 
-If you have the `agentic-dev` plugin installed, use:
-- `/agentic-dev:research` — Phase 1
-- `/agentic-dev:spec` — Phase 2
-- `/agentic-dev:plan` — Phase 3
-- `/agentic-dev:execute` — Phase 4
-- `/agentic-dev:verify` — Phase 5
-
-### Quick Reference
-
-| Phase | Template | Mode |
-|-------|----------|------|
-| 1. Research | `templates/phases/01-research.md` | Normal |
-| 2. Specification | `templates/phases/02-specification.md` | Plan/read-only |
-| 3. Task Breakdown | `templates/phases/03-task-breakdown.md` | Normal |
-| 4. Execution | `templates/phases/04-execution.md` | Worktree |
-| 5. Verification | `templates/phases/05-verification.md` | Normal |
+| Phase | Skill | Mode |
+|-------|-------|------|
+| 1. Research | `/agentic-dev:research` | Normal |
+| 2. Specification | `/agentic-dev:spec` | Plan/read-only |
+| 3. Task Breakdown | `/agentic-dev:plan` | Normal |
+| 4. Execution | `/agentic-dev:execute` | Worktree |
+| 5. Verification | `/agentic-dev:verify` | Normal |
 
 ### Key Documents
 - Spec: `workflow/spec/SPEC.md`
@@ -243,15 +210,13 @@ echo "  workflow/plan/                — PLAN.md and PROGRESS.md (Phase 3-4)"
 echo "  workflow/plan/reviews/        — Per-task review files (Phase 4)"
 echo "  workflow/decisions/           — Architecture Decision Records"
 echo "  workflow/retro/               — Retrospectives (Phase 5)"
-echo "  templates/phases/         — Phase prompt templates"
-echo "  templates/roles/          — Role definitions"
-echo "  src/                      — Source code"
-echo "  tests/                    — Tests"
-echo "  CLAUDE.md                 — Project instructions (edit this first)"
+echo "  src/                          — Source code"
+echo "  tests/                        — Tests"
+echo "  CLAUDE.md                     — Project instructions (edit this first)"
 echo ""
 echo "Next steps:"
 echo "  1. Edit CLAUDE.md — fill in project name and description"
 echo "  2. Place research materials in workflow/research/manual/"
 echo "  3. Start Phase 1:"
-echo "     - Claude Code plugin: /agentic-dev:research"
-echo "     - Other tools: read templates/phases/01-research.md"
+echo "     - Claude Code: /agentic-dev:research"
+echo "     - Copilot CLI: /agentic-dev:research"

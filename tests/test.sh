@@ -12,17 +12,7 @@ pass() { echo "PASS: $1"; }
 fail() { echo "FAIL: $1"; FAILURES=$((FAILURES + 1)); }
 
 # ---------------------------------------------------------------------------
-# 1. check-sync: verify template copies match source
-# ---------------------------------------------------------------------------
-echo "--- check-sync ---"
-if make -C "$REPO_ROOT" check-sync > /dev/null 2>&1; then
-    pass "template copies match source"
-else
-    fail "template copies out of sync — run 'make sync'"
-fi
-
-# ---------------------------------------------------------------------------
-# 2. plugin-validate: run 'claude plugin validate .' (skip if claude not available)
+# 1. plugin-validate: run 'claude plugin validate .' (skip if claude not available)
 # ---------------------------------------------------------------------------
 echo "--- plugin-validate ---"
 if command -v claude > /dev/null 2>&1; then
@@ -30,35 +20,44 @@ if command -v claude > /dev/null 2>&1; then
     if echo "$VALIDATE_OUTPUT" | grep -q "Validation passed"; then
         pass "plugin validation"
     else
-        echo "SKIP: plugin-validate (validation has pre-existing errors)"
+        fail "plugin validation: $VALIDATE_OUTPUT"
     fi
 else
     echo "SKIP: plugin-validate (claude CLI not found)"
 fi
 
 # ---------------------------------------------------------------------------
-# 3. init-fresh: run init.sh on a temp dir, verify full structure exists
+# 2. init-fresh: run init.sh on a temp dir, verify full structure exists
 # ---------------------------------------------------------------------------
 echo "--- init-fresh ---"
 TMPDIR_FRESH="$(mktemp -d)"
-trap 'rm -rf "$TMPDIR_FRESH" "${TMPDIR_UPDATE:-}"' EXIT
+trap 'rm -rf "$TMPDIR_FRESH" "${TMPDIR_DEPRECATE:-}"' EXIT
 
 if "$REPO_ROOT/init.sh" "$TMPDIR_FRESH/project" > /dev/null 2>&1; then
     INIT_PASS=true
     for d in workflow/research/manual workflow/research/final/references workflow/spec \
-             workflow/plan/reviews workflow/decisions workflow/retro src tests \
-             templates/phases templates/roles; do
+             workflow/plan/reviews workflow/decisions workflow/retro src tests; do
         if [ ! -d "$TMPDIR_FRESH/project/$d" ]; then
             fail "init-fresh: missing directory $d"
             INIT_PASS=false
         fi
     done
+    # Verify templates/ is NOT created
+    if [ -d "$TMPDIR_FRESH/project/templates" ]; then
+        fail "init-fresh: templates/ directory should not exist"
+        INIT_PASS=false
+    fi
     for f in CLAUDE.md workflow/plan/PROGRESS.md workflow/decisions/README.md .gitignore; do
         if [ ! -f "$TMPDIR_FRESH/project/$f" ]; then
             fail "init-fresh: missing file $f"
             INIT_PASS=false
         fi
     done
+    # Verify CLAUDE.md uses skills-first format (no template references)
+    if grep -q "templates/" "$TMPDIR_FRESH/project/CLAUDE.md" 2>/dev/null; then
+        fail "init-fresh: CLAUDE.md still references templates/"
+        INIT_PASS=false
+    fi
     if [ "$INIT_PASS" = true ]; then
         pass "init-fresh: full structure created"
     fi
@@ -67,32 +66,63 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 4. init-update: run init.sh --update-templates, verify templates refreshed
+# 3. update-templates-deprecated: verify --update-templates prints deprecation
 # ---------------------------------------------------------------------------
-echo "--- init-update ---"
-TMPDIR_UPDATE="$(mktemp -d)"
+echo "--- update-templates-deprecated ---"
+TMPDIR_DEPRECATE="$(mktemp -d)"
 
-# First do a full init, then update
-if "$REPO_ROOT/init.sh" "$TMPDIR_UPDATE/project" > /dev/null 2>&1; then
-    # Modify a template to detect refresh
-    echo "# stale" > "$TMPDIR_UPDATE/project/templates/phases/01-research.md"
-
-    if "$REPO_ROOT/init.sh" "$TMPDIR_UPDATE/project" --update-templates > /dev/null 2>&1; then
-        if diff -q "$REPO_ROOT/templates/phases/01-research.md" \
-                    "$TMPDIR_UPDATE/project/templates/phases/01-research.md" > /dev/null 2>&1; then
-            pass "init-update: templates refreshed"
-        else
-            fail "init-update: template not refreshed after --update-templates"
-        fi
-    else
-        fail "init-update: init.sh --update-templates exited non-zero"
-    fi
+DEPRECATE_OUTPUT="$("$REPO_ROOT/init.sh" "$TMPDIR_DEPRECATE/project" --update-templates 2>&1)" || true
+if echo "$DEPRECATE_OUTPUT" | grep -qi "deprecated"; then
+    pass "update-templates-deprecated: prints deprecation notice"
 else
-    fail "init-update: initial init.sh exited non-zero"
+    fail "update-templates-deprecated: expected deprecation notice"
 fi
 
 # ---------------------------------------------------------------------------
-# 5. example-structure: verify the example project has all expected files
+# 4. skill-files: verify each skill has SKILL.md but no template.md
+# ---------------------------------------------------------------------------
+echo "--- skill-files ---"
+SKILL_PASS=true
+for skill in research spec plan execute verify init-project; do
+    if [ ! -f "$REPO_ROOT/skills/$skill/SKILL.md" ]; then
+        fail "skill-files: missing skills/$skill/SKILL.md"
+        SKILL_PASS=false
+    fi
+    if [ -f "$REPO_ROOT/skills/$skill/template.md" ]; then
+        fail "skill-files: skills/$skill/template.md should not exist"
+        SKILL_PASS=false
+    fi
+done
+if [ "$SKILL_PASS" = true ]; then
+    pass "skill-files: all skills have SKILL.md, no template.md"
+fi
+
+# ---------------------------------------------------------------------------
+# 5. no-stale-references: verify no remaining templates/ references in source
+# ---------------------------------------------------------------------------
+echo "--- no-stale-references ---"
+# Exclude .git, local_notes, this test file, MEMORY.md, and top-level docs
+# (README.md, CONTRIBUTING.md, and WORKFLOW.md legitimately mention templates/
+# in migration guides, deprecation notices, and test descriptions)
+STALE_REFS="$(grep -r "templates/" "$REPO_ROOT" \
+    --include="*.md" --include="*.sh" --include="Makefile" --include="*.json" \
+    -l 2>/dev/null \
+    | grep -v ".git/" \
+    | grep -v "local_notes/" \
+    | grep -v "tests/test.sh" \
+    | grep -v "MEMORY.md" \
+    | grep -v "README.md" \
+    | grep -v "CONTRIBUTING.md" \
+    | grep -v "WORKFLOW.md" \
+    || true)"
+if [ -z "$STALE_REFS" ]; then
+    pass "no-stale-references: no templates/ references found"
+else
+    fail "no-stale-references: found templates/ references in: $STALE_REFS"
+fi
+
+# ---------------------------------------------------------------------------
+# 6. example-structure: verify the example project has all expected files
 # ---------------------------------------------------------------------------
 echo "--- example-structure ---"
 EXAMPLE_DIR="$REPO_ROOT/examples/temperature-converter"
@@ -113,7 +143,7 @@ if [ "$EXAMPLE_PASS" = true ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# 6. example-tests: run pytest on the example's test suite
+# 7. example-tests: run pytest on the example's test suite
 # ---------------------------------------------------------------------------
 echo "--- example-tests ---"
 if command -v uv > /dev/null 2>&1; then
