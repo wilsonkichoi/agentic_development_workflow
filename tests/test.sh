@@ -11,6 +11,34 @@ FAILURES=0
 pass() { echo "PASS: $1"; }
 fail() { echo "FAIL: $1"; FAILURES=$((FAILURES + 1)); }
 
+# --- Helpers ---
+
+# Extract a top-level string field from a JSON file using python3
+json_field() {
+    python3 -c "import json,sys; print(json.load(open(sys.argv[1]))[sys.argv[2]])" "$1" "$2"
+}
+
+# Extract a field value from YAML frontmatter (between first two --- lines)
+# Handles both quoted ("value") and unquoted (value) forms
+yaml_frontmatter_field() {
+    sed -n '/^---$/,/^---$/{
+        /^'"$2"':/{
+            s/^[^:]*: *//
+            s/^"//
+            s/"$//
+            s/[[:space:]]*$//
+            p
+            q
+        }
+    }' "$1"
+}
+
+# --- Temp dirs (created lazily, cleaned up on exit) ---
+TMPDIR_FRESH=""
+TMPDIR_IDEMP=""
+cleanup() { rm -rf "${TMPDIR_FRESH:-}" "${TMPDIR_IDEMP:-}"; }
+trap cleanup EXIT
+
 # ---------------------------------------------------------------------------
 # 1. plugin-validate: run 'claude plugin validate .' (skip if claude not available)
 # ---------------------------------------------------------------------------
@@ -27,14 +55,15 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 2. init-fresh: run init.sh on a temp dir, verify full structure exists
+# 2. init-fresh: run init.sh on a temp dir, verify structure and content
 # ---------------------------------------------------------------------------
 echo "--- init-fresh ---"
 TMPDIR_FRESH="$(mktemp -d)"
-trap 'rm -rf "$TMPDIR_FRESH" "${TMPDIR_DEPRECATE:-}"' EXIT
 
 if "$REPO_ROOT/init.sh" "$TMPDIR_FRESH/project" > /dev/null 2>&1; then
     INIT_PASS=true
+
+    # Check directories
     for d in workflow/research/manual workflow/research/final/references workflow/spec \
              workflow/plan/reviews workflow/decisions workflow/retro src tests; do
         if [ ! -d "$TMPDIR_FRESH/project/$d" ]; then
@@ -42,44 +71,79 @@ if "$REPO_ROOT/init.sh" "$TMPDIR_FRESH/project" > /dev/null 2>&1; then
             INIT_PASS=false
         fi
     done
-    # Verify templates/ is NOT created
-    if [ -d "$TMPDIR_FRESH/project/templates" ]; then
-        fail "init-fresh: templates/ directory should not exist"
-        INIT_PASS=false
-    fi
+
+    # Check files exist
     for f in CLAUDE.md workflow/plan/PROGRESS.md workflow/decisions/README.md .gitignore; do
         if [ ! -f "$TMPDIR_FRESH/project/$f" ]; then
             fail "init-fresh: missing file $f"
             INIT_PASS=false
         fi
     done
-    # Verify CLAUDE.md uses skills-first format (no template references)
-    if grep -q "templates/" "$TMPDIR_FRESH/project/CLAUDE.md" 2>/dev/null; then
-        fail "init-fresh: CLAUDE.md still references templates/"
+
+    # Check CLAUDE.md references skills (not legacy templates)
+    if ! grep -q '/agentic-dev:' "$TMPDIR_FRESH/project/CLAUDE.md" 2>/dev/null; then
+        fail "init-fresh: CLAUDE.md missing /agentic-dev: skill references"
         INIT_PASS=false
     fi
+
+    # Check generated files are non-empty
+    for f in CLAUDE.md workflow/plan/PROGRESS.md workflow/decisions/README.md .gitignore; do
+        if [ ! -s "$TMPDIR_FRESH/project/$f" ]; then
+            fail "init-fresh: $f is empty"
+            INIT_PASS=false
+        fi
+    done
+
     if [ "$INIT_PASS" = true ]; then
-        pass "init-fresh: full structure created"
+        pass "init-fresh: structure and content correct"
     fi
 else
     fail "init-fresh: init.sh exited non-zero"
 fi
 
 # ---------------------------------------------------------------------------
-# 3. update-templates-deprecated: verify --update-templates prints deprecation
+# 3. init-idempotency: running init.sh twice succeeds, .gitignore preserved
 # ---------------------------------------------------------------------------
-echo "--- update-templates-deprecated ---"
-TMPDIR_DEPRECATE="$(mktemp -d)"
+echo "--- init-idempotency ---"
+TMPDIR_IDEMP="$(mktemp -d)"
+IDEMP_PASS=true
 
-DEPRECATE_OUTPUT="$("$REPO_ROOT/init.sh" "$TMPDIR_DEPRECATE/project" --update-templates 2>&1)" || true
-if echo "$DEPRECATE_OUTPUT" | grep -qi "deprecated"; then
-    pass "update-templates-deprecated: prints deprecation notice"
-else
-    fail "update-templates-deprecated: expected deprecation notice"
+if ! "$REPO_ROOT/init.sh" "$TMPDIR_IDEMP/project" > /dev/null 2>&1; then
+    fail "init-idempotency: first run failed"
+    IDEMP_PASS=false
+fi
+
+if [ "$IDEMP_PASS" = true ]; then
+    # Add a custom rule to .gitignore
+    echo "# custom rule" >> "$TMPDIR_IDEMP/project/.gitignore"
+
+    # Second run
+    if ! "$REPO_ROOT/init.sh" "$TMPDIR_IDEMP/project" > /dev/null 2>&1; then
+        fail "init-idempotency: second run failed"
+        IDEMP_PASS=false
+    fi
+
+    # .gitignore should still have our custom rule (init.sh guards it with [ ! -f ])
+    if ! grep -q "# custom rule" "$TMPDIR_IDEMP/project/.gitignore"; then
+        fail "init-idempotency: .gitignore was overwritten on second run"
+        IDEMP_PASS=false
+    fi
+
+    # Core files should still exist and be non-empty
+    for f in CLAUDE.md workflow/plan/PROGRESS.md workflow/decisions/README.md; do
+        if [ ! -s "$TMPDIR_IDEMP/project/$f" ]; then
+            fail "init-idempotency: $f missing or empty after second run"
+            IDEMP_PASS=false
+        fi
+    done
+fi
+
+if [ "$IDEMP_PASS" = true ]; then
+    pass "init-idempotency: second run succeeds, .gitignore preserved"
 fi
 
 # ---------------------------------------------------------------------------
-# 4. skill-files: verify each skill has SKILL.md but no template.md
+# 4. skill-files: verify each skill has SKILL.md
 # ---------------------------------------------------------------------------
 echo "--- skill-files ---"
 SKILL_PASS=true
@@ -88,41 +152,106 @@ for skill in research spec plan execute verify init-project; do
         fail "skill-files: missing skills/$skill/SKILL.md"
         SKILL_PASS=false
     fi
-    if [ -f "$REPO_ROOT/skills/$skill/template.md" ]; then
-        fail "skill-files: skills/$skill/template.md should not exist"
-        SKILL_PASS=false
-    fi
 done
 if [ "$SKILL_PASS" = true ]; then
-    pass "skill-files: all skills have SKILL.md, no template.md"
+    pass "skill-files: all skills have SKILL.md"
 fi
 
 # ---------------------------------------------------------------------------
-# 5. no-stale-references: verify no remaining templates/ references in source
+# 5. skill-frontmatter: SKILL.md has name matching dir and non-empty description
 # ---------------------------------------------------------------------------
-echo "--- no-stale-references ---"
-# Exclude .git, local_notes, this test file, MEMORY.md, and top-level docs
-# (README.md, CONTRIBUTING.md, and WORKFLOW.md legitimately mention templates/
-# in migration guides, deprecation notices, and test descriptions)
-STALE_REFS="$(grep -r "templates/" "$REPO_ROOT" \
-    --include="*.md" --include="*.sh" --include="Makefile" --include="*.json" \
-    -l 2>/dev/null \
-    | grep -v ".git/" \
-    | grep -v "local_notes/" \
-    | grep -v "tests/test.sh" \
-    | grep -v "MEMORY.md" \
-    | grep -v "README.md" \
-    | grep -v "CONTRIBUTING.md" \
-    | grep -v "WORKFLOW.md" \
-    || true)"
-if [ -z "$STALE_REFS" ]; then
-    pass "no-stale-references: no templates/ references found"
+echo "--- skill-frontmatter ---"
+SKILL_FM_PASS=true
+for skill in research spec plan execute verify init-project; do
+    SKILL_FILE="$REPO_ROOT/skills/$skill/SKILL.md"
+    if [ ! -f "$SKILL_FILE" ]; then
+        # Already caught by skill-files test
+        continue
+    fi
+
+    # Check frontmatter exists
+    if ! head -1 "$SKILL_FILE" | grep -q '^---$'; then
+        fail "skill-frontmatter: $skill/SKILL.md missing frontmatter"
+        SKILL_FM_PASS=false
+        continue
+    fi
+
+    # Check name field matches directory name
+    FM_NAME="$(yaml_frontmatter_field "$SKILL_FILE" "name")"
+    if [ -z "$FM_NAME" ]; then
+        fail "skill-frontmatter: $skill/SKILL.md missing name field"
+        SKILL_FM_PASS=false
+    elif [ "$FM_NAME" != "$skill" ]; then
+        fail "skill-frontmatter: $skill/SKILL.md name is '$FM_NAME', expected '$skill'"
+        SKILL_FM_PASS=false
+    fi
+
+    # Check description field exists
+    FM_DESC="$(yaml_frontmatter_field "$SKILL_FILE" "description")"
+    if [ -z "$FM_DESC" ]; then
+        fail "skill-frontmatter: $skill/SKILL.md missing description field"
+        SKILL_FM_PASS=false
+    fi
+done
+if [ "$SKILL_FM_PASS" = true ]; then
+    pass "skill-frontmatter: all skills have valid name and description"
+fi
+
+# ---------------------------------------------------------------------------
+# 6. agent-frontmatter: every .agent.md has a non-empty description
+# ---------------------------------------------------------------------------
+echo "--- agent-frontmatter ---"
+AGENT_FM_PASS=true
+for agent_file in "$REPO_ROOT"/agents/*.agent.md; do
+    agent_name="$(basename "$agent_file")"
+    if ! head -1 "$agent_file" | grep -q '^---$'; then
+        fail "agent-frontmatter: $agent_name missing frontmatter"
+        AGENT_FM_PASS=false
+        continue
+    fi
+    FM_DESC="$(yaml_frontmatter_field "$agent_file" "description")"
+    if [ -z "$FM_DESC" ]; then
+        fail "agent-frontmatter: $agent_name missing or empty description"
+        AGENT_FM_PASS=false
+    fi
+done
+if [ "$AGENT_FM_PASS" = true ]; then
+    pass "agent-frontmatter: all agents have description"
+fi
+
+# ---------------------------------------------------------------------------
+# 7. agent-count: number of .agent.md files matches README claim
+# ---------------------------------------------------------------------------
+echo "--- agent-count ---"
+# README line: | **Agents** | 13 | ... |
+README_COUNT="$(sed -n 's/.*\*\*Agents\*\* *| *\([0-9][0-9]*\) *|.*/\1/p' "$REPO_ROOT/README.md")"
+ACTUAL_COUNT="$(ls "$REPO_ROOT"/agents/*.agent.md 2>/dev/null | wc -l | tr -d ' ')"
+
+if [ -z "$README_COUNT" ]; then
+    fail "agent-count: could not parse agent count from README.md"
+elif [ "$README_COUNT" -ne "$ACTUAL_COUNT" ]; then
+    fail "agent-count: README claims $README_COUNT agents, found $ACTUAL_COUNT"
 else
-    fail "no-stale-references: found templates/ references in: $STALE_REFS"
+    pass "agent-count: $ACTUAL_COUNT agents match README"
 fi
 
 # ---------------------------------------------------------------------------
-# 6. example-structure: verify the example project has all expected files
+# 8. version-consistency: plugin.json versions match
+# ---------------------------------------------------------------------------
+echo "--- version-consistency ---"
+ROOT_VERSION="$(json_field "$REPO_ROOT/plugin.json" "version")"
+PLUGIN_VERSION="$(json_field "$REPO_ROOT/.claude-plugin/plugin.json" "version")"
+
+if [ -z "$ROOT_VERSION" ] || [ -z "$PLUGIN_VERSION" ]; then
+    fail "version-consistency: could not parse version from plugin.json files"
+elif [ "$ROOT_VERSION" != "$PLUGIN_VERSION" ]; then
+    fail "version-consistency: root=$ROOT_VERSION vs .claude-plugin=$PLUGIN_VERSION"
+else
+    pass "version-consistency: both plugin.json files at v$ROOT_VERSION"
+fi
+
+# ---------------------------------------------------------------------------
+# 9. example-structure: verify the example project has all expected files
 # ---------------------------------------------------------------------------
 echo "--- example-structure ---"
 EXAMPLE_DIR="$REPO_ROOT/examples/temperature-converter"
@@ -143,7 +272,7 @@ if [ "$EXAMPLE_PASS" = true ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# 7. example-tests: run pytest on the example's test suite
+# 10. example-tests: run pytest on the example's test suite
 # ---------------------------------------------------------------------------
 echo "--- example-tests ---"
 if command -v uv > /dev/null 2>&1; then

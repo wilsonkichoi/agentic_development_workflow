@@ -5,9 +5,10 @@ Guide for working on the Agentic Development Workflow plugin.
 ## Repository Structure
 
 ```
-.claude-plugin/          Plugin manifest + marketplace definition
+.claude-plugin/          Claude Code plugin manifest + marketplace
   plugin.json            Name, version, description, keywords, component paths
   marketplace.json       Self-hosted marketplace for distribution
+plugin.json              Copilot CLI plugin manifest
 
 skills/                  Skills (6 total, each is a single SKILL.md)
   init-project/          /agentic-dev:init-project
@@ -82,6 +83,7 @@ Agent files live in `agents/` as `*.agent.md` files (compatible with both Claude
 
 ```markdown
 ---
+name: agent-name
 description: "One-line description of when to use this agent."
 ---
 
@@ -93,16 +95,26 @@ You are a [role description].
 ## Methodology
 - ...
 
-## Do NOT
-- ...
+## Behavioral Contract
+
+### ALWAYS:
+- [positive instructions — what the agent must do]
+
+### NEVER:
+- [anti-patterns — what the agent must avoid]
+
+## Output Format
+[Optional — only for agents that produce structured deliverables]
 ```
 
 ### Agent guidelines
 
+- The `name` field must match the filename (without `.agent.md`).
 - The `description` field in YAML frontmatter is required — it's how Claude decides which agent to use and how it appears in `/agents`.
 - Write the body as a system prompt (direct "You are..." instructions), not as documentation about the role.
-- Keep agents focused on priorities, methodology, and anti-patterns. No fluff.
-- Each agent should be 25-35 lines. If it's longer, you're probably over-specifying.
+- Keep agents focused on priorities, methodology, and behavioral contract. No fluff.
+- Each agent should be 30-45 lines. If it's longer, you're probably over-specifying.
+- Add an `## Output Format` section only for agents that produce structured deliverables (reviewers, QA).
 
 ### Copilot CLI compatibility
 
@@ -143,7 +155,7 @@ Every agent file must have a `description` in its YAML frontmatter. Without it, 
 
 ### Plugin version
 
-Bump the `version` field in `.claude-plugin/plugin.json` for releases. Users with auto-update enabled get the new version when the version changes.
+Bump the `version` field in both `plugin.json` and `.claude-plugin/plugin.json` for releases. Users with auto-update enabled get the new version when the version changes.
 
 ### Don't break init.sh
 
@@ -159,12 +171,15 @@ make test     # Runs tests/test.sh
 
 The test suite (`tests/test.sh`) covers:
 1. **plugin-validate** — `claude plugin validate .` (skipped if CLI not available)
-2. **init-fresh** — `init.sh` creates correct directory structure (no legacy template dirs)
-3. **update-templates-deprecated** — `--update-templates` prints deprecation notice
-4. **skill-files** — each skill has SKILL.md, no template.md
-5. **no-stale-references** — no legacy template path references remain in source
-6. **example-structure** — `examples/temperature-converter/` has all expected files
-7. **example-tests** — pytest passes on the example project
+2. **init-fresh** — `init.sh` creates correct directory structure and generated file content
+3. **init-idempotency** — running `init.sh` twice succeeds, `.gitignore` is preserved
+4. **skill-files** — each skill has SKILL.md
+5. **skill-frontmatter** — each SKILL.md has valid YAML frontmatter with `name:` matching directory and non-empty `description:`
+6. **agent-frontmatter** — each `.agent.md` has YAML frontmatter with non-empty `description:`
+7. **agent-count** — number of agents matches what README.md claims
+8. **version-consistency** — `version` in root `plugin.json` matches `.claude-plugin/plugin.json`
+9. **example-structure** — `examples/temperature-converter/` has all expected files
+10. **example-tests** — pytest passes on the example project
 
 For a complete pre-PR checklist, also do the manual checks:
 
@@ -201,7 +216,7 @@ Include:
 2. Run `claude plugin validate .` — must pass
 3. Test affected skills or init.sh locally
 4. Keep commits focused — one concern per commit
-5. If this is a release, bump `version` in `.claude-plugin/plugin.json`
+5. If this is a release, bump `version` in both `plugin.json` and `.claude-plugin/plugin.json`
 
 ### Review criteria
 
