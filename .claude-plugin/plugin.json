@@ -7,7 +7,14 @@
   },
   "repository": "https://github.com/wilsonkichoi/agentic_development_workflow",
   "license": "MIT",
-  "keywords": ["workflow", "development", "planning", "specification", "execution", "agile"],
+  "keywords": [
+    "workflow",
+    "development",
+    "planning",
+    "specification",
+    "execution",
+    "agile"
+  ],
   "agents": "agents/",
-  "skills": ["skills/"]
+  "skills": "skills/"
 }
