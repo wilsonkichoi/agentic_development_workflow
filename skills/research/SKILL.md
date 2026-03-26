@@ -34,6 +34,10 @@ Read all files in `workflow/research/manual/`. These are materials gathered duri
 
 If a project instruction file exists (CLAUDE.md or .github/copilot-instructions.md), read it for existing tooling preferences, version constraints, or coding standards. Treat these as project constraints.
 
+**ROLE:**
+
+If executing research, activate the `software-architect` agent by default. For highly domain-specific projects, activate the `domain-specialist` agent instead.
+
 **INSTRUCTIONS:**
 
 You are performing deep research to complement the human's manual research. Do not merely summarize — add value by:

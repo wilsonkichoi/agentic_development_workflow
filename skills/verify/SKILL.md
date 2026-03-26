@@ -28,6 +28,11 @@ Additional context:
 - Test results: {{PASTE_OR_REFERENCE — e.g., output of pytest}}
 - Any manual testing notes: {{YOUR_OBSERVATIONS}}
 
+**ROLE:**
+
+If executing a standard milestone verification, use `qa-engineer` to test and `code-reviewer` to analyze quality.
+If generating the final retrospective, use `senior-pm` or `software-architect` to capture process and architecture learnings, or use the default role if not specified.
+
 **INSTRUCTIONS:**
 
 **Step 1 — Verify the milestone:**

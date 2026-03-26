@@ -35,7 +35,15 @@ Each task must:
 5. List the files to create or modify.
 6. Have testable acceptance criteria (specific commands or assertions, not subjective assessments).
 7. Declare dependencies on other tasks (or "none").
-8. Specify the recommended **agent role** for execution (see `/agents` for available roles).
+8. Specify the recommended **agent role** for execution. Choose from:
+   - `backend-engineer` — API endpoints, service logic, database operations
+   - `frontend-developer` — UI components, styling, client-side logic
+   - `data-engineer` — data pipelines, ETL, schema migrations
+   - `devops-engineer` — CI/CD, infrastructure, deployment
+   - `security-engineer` — auth, encryption, security hardening
+   - `qa-engineer` — test tasks
+   - `senior-engineer` — complex cross-cutting tasks
+   - `senior-pm` — project management, risk analysis, task reprioritization
 
 **Task scope guidance:**
 
