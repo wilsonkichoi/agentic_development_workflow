@@ -68,6 +68,26 @@ After installation:
 copilot plugin install wilsonkichoi/agentic_development_workflow
 ```
 
+### Gemini CLI
+
+To avoid polluting the global context, install the extension globally but keep it disabled by default. Enable it strictly on a per-workspace basis:
+
+```bash
+# 1. Install the extension from GitHub
+gemini extensions install https://github.com/wilsonkichoi/agentic_development_workflow
+
+# 2. Disable the extension globally (user scope) so it doesn't pollute all your projects
+gemini extensions disable agentic-development-workflow --scope user
+
+# 3. Navigate into specific projects and enable it locally (workspace scope)
+cd /path/to/your-project
+gemini extensions enable agentic-development-workflow --scope workspace
+```
+
+After installation:
+- Skills are available directly via the CLI (e.g., `gemini plan`).
+- Subagents are available via the `@` mention or interactively (e.g., `gemini --agent=backend-engineer`).
+
 ### Local Plugin Testing
 
 ```bash
