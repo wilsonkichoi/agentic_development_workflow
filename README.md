@@ -118,8 +118,6 @@ v2.0.0 removes the `templates/` directory. Phase prompts are now inline in each 
 | `templates/phases/*.md` | Merged into `skills/*/SKILL.md` |
 | `templates/roles/*.md` | Replaced by `agents/*.agent.md` |
 | `skills/*/template.md` | Merged into `skills/*/SKILL.md` |
-| `init.sh --update-templates` | Deprecated (prints notice and exits) |
-| `init.sh` copies templates into projects | `init.sh` only creates `workflow/` structure |
 
 **Step 1 — Update the plugin:**
 
@@ -236,7 +234,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, testing checklist,
 
 - [WORKFLOW.md](WORKFLOW.md) — Full workflow reference with all phases, principles, cost optimization, and tool-specific guides
 - [CI_CD.md](CI_CD.md) — CI/CD pipeline design notes
-- [examples/temperature-converter/](examples/temperature-converter/) — End-to-end example showing expected output of each workflow phase
+
 
 ## References
 

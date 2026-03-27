@@ -54,93 +54,6 @@ else
     echo "SKIP: plugin-validate (claude CLI not found)"
 fi
 
-# ---------------------------------------------------------------------------
-# 2. init-fresh: run init.sh on a temp dir, verify structure and content
-# ---------------------------------------------------------------------------
-echo "--- init-fresh ---"
-TMPDIR_FRESH="$(mktemp -d)"
-
-if "$REPO_ROOT/init.sh" "$TMPDIR_FRESH/project" > /dev/null 2>&1; then
-    INIT_PASS=true
-
-    # Check directories
-    for d in workflow/research/manual workflow/research/final/references workflow/spec \
-             workflow/plan/reviews workflow/decisions workflow/retro src tests; do
-        if [ ! -d "$TMPDIR_FRESH/project/$d" ]; then
-            fail "init-fresh: missing directory $d"
-            INIT_PASS=false
-        fi
-    done
-
-    # Check files exist
-    for f in CLAUDE.md workflow/plan/PROGRESS.md workflow/decisions/README.md .gitignore; do
-        if [ ! -f "$TMPDIR_FRESH/project/$f" ]; then
-            fail "init-fresh: missing file $f"
-            INIT_PASS=false
-        fi
-    done
-
-    # Check CLAUDE.md references skills (not legacy templates)
-    if ! grep -q '/agentic-dev:' "$TMPDIR_FRESH/project/CLAUDE.md" 2>/dev/null; then
-        fail "init-fresh: CLAUDE.md missing /agentic-dev: skill references"
-        INIT_PASS=false
-    fi
-
-    # Check generated files are non-empty
-    for f in CLAUDE.md workflow/plan/PROGRESS.md workflow/decisions/README.md .gitignore; do
-        if [ ! -s "$TMPDIR_FRESH/project/$f" ]; then
-            fail "init-fresh: $f is empty"
-            INIT_PASS=false
-        fi
-    done
-
-    if [ "$INIT_PASS" = true ]; then
-        pass "init-fresh: structure and content correct"
-    fi
-else
-    fail "init-fresh: init.sh exited non-zero"
-fi
-
-# ---------------------------------------------------------------------------
-# 3. init-idempotency: running init.sh twice succeeds, .gitignore preserved
-# ---------------------------------------------------------------------------
-echo "--- init-idempotency ---"
-TMPDIR_IDEMP="$(mktemp -d)"
-IDEMP_PASS=true
-
-if ! "$REPO_ROOT/init.sh" "$TMPDIR_IDEMP/project" > /dev/null 2>&1; then
-    fail "init-idempotency: first run failed"
-    IDEMP_PASS=false
-fi
-
-if [ "$IDEMP_PASS" = true ]; then
-    # Add a custom rule to .gitignore
-    echo "# custom rule" >> "$TMPDIR_IDEMP/project/.gitignore"
-
-    # Second run
-    if ! "$REPO_ROOT/init.sh" "$TMPDIR_IDEMP/project" > /dev/null 2>&1; then
-        fail "init-idempotency: second run failed"
-        IDEMP_PASS=false
-    fi
-
-    # .gitignore should still have our custom rule (init.sh guards it with [ ! -f ])
-    if ! grep -q "# custom rule" "$TMPDIR_IDEMP/project/.gitignore"; then
-        fail "init-idempotency: .gitignore was overwritten on second run"
-        IDEMP_PASS=false
-    fi
-
-    # Core files should still exist and be non-empty
-    for f in CLAUDE.md workflow/plan/PROGRESS.md workflow/decisions/README.md; do
-        if [ ! -s "$TMPDIR_IDEMP/project/$f" ]; then
-            fail "init-idempotency: $f missing or empty after second run"
-            IDEMP_PASS=false
-        fi
-    done
-fi
-
-if [ "$IDEMP_PASS" = true ]; then
-    pass "init-idempotency: second run succeeds, .gitignore preserved"
-fi
 
 # ---------------------------------------------------------------------------
 # 4. skill-files: verify each skill has SKILL.md
@@ -250,40 +163,7 @@ else
     pass "version-consistency: both plugin.json files at v$ROOT_VERSION"
 fi
 
-# ---------------------------------------------------------------------------
-# 9. example-structure: verify the example project has all expected files
-# ---------------------------------------------------------------------------
-echo "--- example-structure ---"
-EXAMPLE_DIR="$REPO_ROOT/examples/temperature-converter"
-EXAMPLE_PASS=true
-for f in README.md CLAUDE.md \
-         workflow/research/manual/requirements.md \
-         workflow/research/final/research.md \
-         workflow/spec/SPEC.md workflow/spec/HANDOFF.md \
-         workflow/plan/PLAN.md workflow/plan/PROGRESS.md \
-         src/converter.py tests/test_converter.py; do
-    if [ ! -f "$EXAMPLE_DIR/$f" ]; then
-        fail "example-structure: missing $f"
-        EXAMPLE_PASS=false
-    fi
-done
-if [ "$EXAMPLE_PASS" = true ]; then
-    pass "example-structure: all expected files present"
-fi
 
-# ---------------------------------------------------------------------------
-# 10. example-tests: run pytest on the example's test suite
-# ---------------------------------------------------------------------------
-echo "--- example-tests ---"
-if command -v uv > /dev/null 2>&1; then
-    if (cd "$EXAMPLE_DIR" && uv run --with pytest pytest tests/ -q 2>&1); then
-        pass "example-tests: pytest passed"
-    else
-        fail "example-tests: pytest failed"
-    fi
-else
-    echo "SKIP: example-tests (uv not found)"
-fi
 
 # ---------------------------------------------------------------------------
 # Summary

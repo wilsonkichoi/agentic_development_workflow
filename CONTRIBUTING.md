@@ -23,11 +23,11 @@ agents/                  Role-based agents (13 total, show in /agents)
   backend-engineer.agent.md
   ...
 
-init.sh                  Project scaffolding (standalone, without plugin)
+
 WORKFLOW.md              Full workflow reference documentation
 CI_CD.md                 CI/CD pipeline design notes
 Makefile                 Build commands (test)
-examples/                Example projects showing workflow output
+
 tests/                   Automated test suite
 ```
 
@@ -120,29 +120,6 @@ You are a [role description].
 
 Both Claude Code and Copilot CLI use `<name>.agent.md` as the agent file format. The `.agent.md` files are the canonical source of truth and are tracked in git.
 
-## Working on init.sh
-
-`init.sh` is a standalone scaffolding tool. It:
-
-1. Creates the `workflow/` directory structure
-2. Generates starter CLAUDE.md, PROGRESS.md, decisions/README.md, .gitignore
-
-Note: `init.sh` no longer copies templates into projects. Phase prompts live in the plugin's `skills/` directory.
-
-### Testing init.sh
-
-```bash
-# Test full init
-./init.sh /tmp/test-project
-ls -R /tmp/test-project          # Verify structure
-cat /tmp/test-project/CLAUDE.md  # Verify generated content
-
-# Clean up
-rm -rf /tmp/test-project
-```
-
-Any change to the project folder structure (new directories, new placeholder files) must be reflected in init.sh.
-
 ## What to Pay Attention To
 
 ### Skill descriptions
@@ -157,10 +134,6 @@ Every agent file must have a `description` in its YAML frontmatter. Without it, 
 
 Bump the `version` field in both `plugin.json` and `.claude-plugin/plugin.json` for releases. Users with auto-update enabled get the new version when the version changes.
 
-### Don't break init.sh
-
-If you change the project directory structure, update init.sh to match.
-
 ## Testing Locally
 
 Run the full automated test suite:
@@ -171,15 +144,13 @@ make test     # Runs tests/test.sh
 
 The test suite (`tests/test.sh`) covers:
 1. **plugin-validate** — `claude plugin validate .` (skipped if CLI not available)
-2. **init-fresh** — `init.sh` creates correct directory structure and generated file content
-3. **init-idempotency** — running `init.sh` twice succeeds, `.gitignore` is preserved
+
 4. **skill-files** — each skill has SKILL.md
 5. **skill-frontmatter** — each SKILL.md has valid YAML frontmatter with `name:` matching directory and non-empty `description:`
 6. **agent-frontmatter** — each `.agent.md` has YAML frontmatter with non-empty `description:`
 7. **agent-count** — number of agents matches what README.md claims
 8. **version-consistency** — `version` in root `plugin.json` matches `.claude-plugin/plugin.json`
-9. **example-structure** — `examples/temperature-converter/` has all expected files
-10. **example-tests** — pytest passes on the example project
+
 
 For a complete pre-PR checklist, also do the manual checks:
 
@@ -199,7 +170,7 @@ claude --plugin-dir .
 #   rm -rf /tmp/test-init
 ```
 
-The `examples/temperature-converter/` directory serves as the canonical reference for what "good output" looks like at each phase. See its [README](examples/temperature-converter/README.md) for a walkthrough.
+
 
 ## PR Guidelines
 
@@ -207,14 +178,14 @@ The `examples/temperature-converter/` directory serves as the canonical referenc
 
 Include:
 - **What** changed and **why**
-- Which components are affected (skills, agents, init.sh, plugin manifest)
+- Which components are affected (skills, agents, plugin manifest)
 - How you tested the change
 
 ### Before submitting
 
 1. Run `make test` — all tests must pass
 2. Run `claude plugin validate .` — must pass
-3. Test affected skills or init.sh locally
+3. Test affected skills locally
 4. Keep commits focused — one concern per commit
 5. If this is a release, bump `version` in both `plugin.json` and `.claude-plugin/plugin.json`
 
@@ -223,5 +194,5 @@ Include:
 PRs are reviewed for:
 - Skill descriptions are trigger-friendly
 - Agent descriptions are present
-- init.sh reflects any structural changes
+
 - No breaking changes to existing project structures
