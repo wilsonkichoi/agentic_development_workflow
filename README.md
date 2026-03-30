@@ -40,7 +40,7 @@ Each phase produces persistent documents (SPEC.md, PLAN.md, PROGRESS.md, decisio
 
 | Component | Count | Description |
 |-----------|-------|-------------|
-| **Skills** | 6 | `init-project`, `research`, `spec`, `plan`, `execute`, `verify` |
+| **Skills** | 7 | `init-project`, `research`, `spec`, `plan`, `execute`, `review`, `verify` |
 | **Agents** | 13 | Software Architect, Backend Engineer, QA Engineer, Security Reviewer, and more |
 
 ## Installation
@@ -195,6 +195,7 @@ my-project/
 | 2. Specification | `/agentic-dev:spec` | Generate SPEC.md with milestones, schemas, contracts |
 | 3. Task Breakdown | `/agentic-dev:plan` | Decompose into atomic tasks with wave grouping |
 | 4. Execution | `/agentic-dev:execute` | Implement one task with role-matched agent |
+| 4b. Review | `/agentic-dev:review` | Code review, fix plan validation, fix verification |
 | 5. Verification | `/agentic-dev:verify` | End-to-end testing + retrospective |
 
 ### Using Agents (Phase 4)
@@ -221,6 +222,8 @@ Test tasks run in **separate sessions** from implementation tasks — the QA age
 **Decision records** — Significant decisions are captured in `workflow/decisions/DR-NNN-*.md` with options, rationale, and threaded human/AI discussion.
 
 **Task review files** — Every task gets `workflow/plan/reviews/task-X.Y.md` with a work summary and space for `*FEEDBACK:*` / `*AI:*` discussion before PR creation.
+
+**Review loop** — After execution, `/agentic-dev:review` produces durable review files (`wave-N.md` or appends to `task-X.Y.md`). Any AI session in any tool can read the review file and continue the loop: review issues, validate fix plans, verify fixes. No copy-paste between sessions — the review file is the connective tissue.
 
 **Parallel waves** — Independent tasks run concurrently when they belong to different components, have frozen API contracts, and share no mutable state.
 

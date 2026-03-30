@@ -10,12 +10,13 @@ Guide for working on the Agentic Development Workflow plugin.
   marketplace.json       Self-hosted marketplace for distribution
 plugin.json              Copilot CLI plugin manifest
 
-skills/                  Skills (6 total, each is a single SKILL.md)
+skills/                  Skills (7 total, each is a single SKILL.md)
   init-project/          /agentic-dev:init-project
   research/              /agentic-dev:research (Phase 1)
   spec/                  /agentic-dev:spec (Phase 2)
   plan/                  /agentic-dev:plan (Phase 3)
   execute/               /agentic-dev:execute (Phase 4)
+  review/                /agentic-dev:review (Review loop)
   verify/                /agentic-dev:verify (Phase 5)
 
 agents/                  Role-based agents (13 total, show in /agents)
@@ -161,7 +162,7 @@ make test
 # 2. Load plugin and verify components
 claude --plugin-dir .
 # Then in the session:
-#   /skills   → confirm all 6 skills appear
+#   /skills   → confirm all 7 skills appear
 #   /agents   → confirm all 13 agents appear
 
 # 3. Test skill invocations (spot check at minimum)

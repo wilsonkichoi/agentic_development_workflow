@@ -21,10 +21,11 @@ A structured, 5-phase framework for building software with AI coding agents (Cla
 /agentic-dev:spec           # Phase 2
 /agentic-dev:plan           # Phase 3
 /agentic-dev:execute        # Phase 4
+/agentic-dev:review         # Review loop (between Phase 4 and 5)
 /agentic-dev:verify         # Phase 5
 ```
 
-The plugin includes 6 skills (init + 5 phases) and 13 role-based agents. Agents appear in `/agents` — use them for role-matched execution in Phase 4.
+The plugin includes 7 skills (init + 5 phases + review) and 13 role-based agents. Agents appear in `/agents` — use them for role-matched execution in Phase 4.
 
 ### Copilot CLI
 
@@ -189,8 +190,15 @@ Role definitions are available as agents — see `/agents` when using the plugin
 6. **Verify:** Agent runs linting, type checks, tests, and acceptance criteria before marking done.
 7. **Write task review:** Create `workflow/plan/reviews/task-X.Y.md` with a work summary: what was implemented, key decisions made, obstacles encountered and how they were solved.
 8. **Update progress:** Mark the task checkbox as `[x]` in PLAN.md. Set task status to `review` in PROGRESS.md. Note any issues.
-9. **Human review:** Human reviews the diff and the task review file.
-   - If changes needed: human adds `*FEEDBACK:*` comments in the task review file. AI responds with `*AI:*` comments, re-implements, and updates the review file. Discussion is append-only — never overwrite previous entries.
+9. **Review loop (after task/wave completion, before PR):**
+   Use `/agentic-dev:review` to run an independent code review and spec compliance check. The review file (`wave-N.md` or `task-X.Y.md`) is the single source of truth — any AI session in any tool can read it and continue the loop.
+   - `a.` `/agentic-dev:review wave N` (or `task X.Y`) — independent code review, produces review file with severity-ranked issues.
+   - `b.` Execute AI proposes a fix plan in the review file's `## Review Discussion`.
+   - `c.` `/agentic-dev:review fix-plan wave N` — validate fix plan (optional, can use a different tool for independent perspective). Run multiple times with different AIs; results accumulate.
+   - `d.` `/agentic-dev:execute` — apply approved fixes, appends `### Fix Results` to the review file.
+   - `e.` `/agentic-dev:review verify-fixes wave N` — verify fixes were applied correctly.
+   - Alternatively, use `/agentic-dev:review full wave N` to run steps a-c in one session using subagents for independent validation.
+   - Human reviews the results at each step. If changes needed: human adds `*FEEDBACK:*` comments. Discussion is append-only.
    - If satisfactory: human instructs AI to create a PR.
 10. **Create PR:** PR description includes: what was implemented, which PLAN.md task, test results, spec gaps found, branch name.
 11. **Fresh context:** Start each new task with a clean context (`/clear` or new session). Avoid `/compact` — lossy summarization increases hallucination risk.
@@ -215,11 +223,14 @@ Use this 5-step framework. Attempt ALL steps before escalating.
 - Working code committed per task (in feature branch, NOT merged)
 - Updated `workflow/plan/PROGRESS.md`
 - `workflow/plan/reviews/task-X.Y.md` for every task
+- `workflow/plan/reviews/wave-N.md` for wave-level reviews (produced by `/agentic-dev:review`)
 - Pull request per task (created on human instruction)
 
 **Gate:** Human reviews the diff and task review file. Code is NOT merged until human approves and instructs PR creation.
 
 **Skill:** [`skills/execute/SKILL.md`](skills/execute/SKILL.md)
+
+**Review Skill:** [`skills/review/SKILL.md`](skills/review/SKILL.md) — use between execution and PR creation for independent code review, fix plan validation, and fix verification.
 
 ---
 
@@ -269,8 +280,9 @@ project-root/
 │   ├── plan/
 │   │   ├── PLAN.md                    # Phase 3: Milestone → Wave → Task breakdown
 │   │   ├── PROGRESS.md                # Phase 4: live progress tracker
-│   │   └── reviews/                   # Phase 4: per-task review discussions
-│   │       └── task-X.Y.md            # Created for every task
+│   │   └── reviews/                   # Phase 4: per-task and wave-level reviews
+│   │       ├── task-X.Y.md            # Per-task work summary (from execute skill)
+│   │       └── wave-N.md              # Wave-level review (from review skill)
 │   ├── decisions/
 │   │   ├── README.md                  # Decision index
 │   │   └── DR-NNN-title.md            # Individual decision records
@@ -299,21 +311,23 @@ Roles are adapted from [agency-agents](https://github.com/msitarzewski/agency-ag
 
 **Core roles:**
 
-| Role | Primary Phase | Focus |
-|------|--------------|-------|
-| Software Architect | 2, 3 | System design, component boundaries, trade-off analysis |
-| Security Reviewer | 2 | Threat modeling, auth flows, compliance |
-| Domain Specialist | 2 | Business rule accuracy, domain modeling |
-| Product Reviewer | 2 | User-centric acceptance criteria, UX completeness |
-| Senior Engineer | 3 | Implementation feasibility, hidden complexity |
-| Senior PM | 3 | Priority, risk, milestone sequencing |
-| Frontend Developer | 4 | Component architecture, accessibility, responsive design |
-| Backend Engineer | 4 | API implementation, data layer, service logic |
-| Data Engineer | 4 | Schema implementation, migrations, data integrity |
-| DevOps Engineer | 4 | Infrastructure, CI/CD, deployment |
-| QA Engineer | 4, 5 | Spec-based testing, coverage analysis |
-| Security Engineer | 4 | Secure implementation, auth, encryption |
-| Code Reviewer | 5 | Code quality, patterns, maintainability |
+| Role | Focus |
+|------|-------|
+| Software Architect | System design, component boundaries, trade-off analysis, fix plan validation |
+| Security Reviewer | Threat modeling, auth flows, compliance |
+| Domain Specialist | Business rule accuracy, domain modeling |
+| Product Reviewer | User-centric acceptance criteria, UX completeness |
+| Senior Engineer | Implementation feasibility, hidden complexity |
+| Senior PM | Priority, risk, milestone sequencing |
+| Frontend Developer | Component architecture, accessibility, responsive design |
+| Backend Engineer | API implementation, data layer, service logic |
+| Data Engineer | Schema implementation, migrations, data integrity |
+| DevOps Engineer | Infrastructure, CI/CD, deployment |
+| QA Engineer | Spec-based testing, coverage analysis, fix verification |
+| Security Engineer | Secure implementation, auth, encryption |
+| Code Reviewer | Code quality, patterns, maintainability, review loop |
+
+Agents are phase-agnostic — the skill that invokes them provides the phase context. Use any agent ad-hoc when its expertise is relevant.
 
 ---
 
@@ -522,6 +536,7 @@ copilot --model claude-opus-4.6 --autopilot --max-autopilot-continues 30 \
 | `workflow/plan/rfc.md` | Phase 3 | Updated during review loop | Phase 3 |
 | `workflow/plan/PROGRESS.md` | Phase 3 | Live-updated in Phase 4 | Phase 4, 5 |
 | `workflow/plan/reviews/task-X.Y.md` | Phase 4 | Updated during review loop | Phase 4, 5 |
+| `workflow/plan/reviews/wave-N.md` | Review loop | Append-only (issues, fix plans, fix results, verifications) | Phase 4, 5 |
 | `workflow/decisions/DR-NNN-*.md` | Any phase | Updated during review loops | All phases, especially Phase 5 |
 | `RETRO-*.md` | Phase 5 | Updated during review loop, accumulates | Next Phase 1 |
 | `workflow/retro/review.md` | Phase 5 | Updated during review loop | Phase 5 |

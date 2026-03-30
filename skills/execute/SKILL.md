@@ -114,6 +114,32 @@ Use this 5-step framework. Attempt ALL steps before escalating.
 - Do not add comments, docstrings, or type annotations to code you didn't change.
 - If you discover a spec gap (something needed but not defined in SPEC.md), note it in the task review file and PROGRESS.md. Do NOT guess — flag it for human review. If the gap requires a design decision between 2+ viable options, create a decision record in `workflow/decisions/DR-NNN-title.md` and update `workflow/decisions/README.md`.
 
+**FIX MODE (when fixing issues from a review file):**
+
+If the user directs you to fix issues from a review file (e.g., `wave-N.md` or `task-X.Y.md`):
+
+1. Read the review file. Find `## Issues Found` (wave review) or `### Issues Found` (task-level review under `## Code Review`).
+2. Read any fix plan discussion in `## Review Discussion` — look for `### Fix Plan` and any `### Fix Plan Analysis` entries. If multiple AIs analyzed the plan, synthesize their feedback. If a fix was flagged as "revise", follow the revised approach.
+3. Implement all approved fixes. Run verification commands (lint, type check, tests, acceptance criteria).
+4. Append `### Fix Results` under `## Review Discussion` in the review file:
+
+   ```
+   ### Fix Results ({{AI model/tool}} — {{DATE}})
+
+   **Issue N ({{title}}) — Fixed**
+   - What was changed: {{1-2 sentences}}
+   - Files modified: {{list}}
+
+   **Issue N ({{title}}) — Deferred**
+   - Reason: {{why it cannot be applied now}}
+
+   **Verification:**
+   - {{lint command}} — PASS/FAIL
+   - {{test command}} — PASS/FAIL
+   ```
+
+5. After fixes, the user can run `/agentic-dev:review verify-fixes wave N` to independently verify.
+
 **README UPDATE:**
 
 If this task adds user-facing functionality (CLI commands, API endpoints, UI features), update the **Usage** section of `README.md` with examples showing how to use what was just built. Skip this for internal/infrastructure tasks.
@@ -128,6 +154,7 @@ Provide a brief summary:
 5. Any spec gaps or issues discovered
 6. Confirm that `workflow/plan/reviews/task-{{X.Y}}.md` has been created
 7. Confirm that `workflow/plan/PROGRESS.md` has been updated
+8. Next step: Use `/agentic-dev:review wave N` or `/agentic-dev:review task X.Y` for independent code review and spec compliance checking.
 
 **HUMAN REVIEW PROCESS:**
 

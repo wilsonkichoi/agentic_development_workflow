@@ -60,7 +60,7 @@ fi
 # ---------------------------------------------------------------------------
 echo "--- skill-files ---"
 SKILL_PASS=true
-for skill in research spec plan execute verify init-project; do
+for skill in research spec plan execute verify init-project review; do
     if [ ! -f "$REPO_ROOT/skills/$skill/SKILL.md" ]; then
         fail "skill-files: missing skills/$skill/SKILL.md"
         SKILL_PASS=false
@@ -75,7 +75,7 @@ fi
 # ---------------------------------------------------------------------------
 echo "--- skill-frontmatter ---"
 SKILL_FM_PASS=true
-for skill in research spec plan execute verify init-project; do
+for skill in research spec plan execute verify init-project review; do
     SKILL_FILE="$REPO_ROOT/skills/$skill/SKILL.md"
     if [ ! -f "$SKILL_FILE" ]; then
         # Already caught by skill-files test
