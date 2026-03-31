@@ -154,13 +154,14 @@ fi
 echo "--- version-consistency ---"
 ROOT_VERSION="$(json_field "$REPO_ROOT/plugin.json" "version")"
 PLUGIN_VERSION="$(json_field "$REPO_ROOT/.claude-plugin/plugin.json" "version")"
+GEMINI_VERSION="$(json_field "$REPO_ROOT/gemini-extension.json" "version")"
 
-if [ -z "$ROOT_VERSION" ] || [ -z "$PLUGIN_VERSION" ]; then
-    fail "version-consistency: could not parse version from plugin.json files"
-elif [ "$ROOT_VERSION" != "$PLUGIN_VERSION" ]; then
-    fail "version-consistency: root=$ROOT_VERSION vs .claude-plugin=$PLUGIN_VERSION"
+if [ -z "$ROOT_VERSION" ] || [ -z "$PLUGIN_VERSION" ] || [ -z "$GEMINI_VERSION" ]; then
+    fail "version-consistency: could not parse version from manifest files"
+elif [ "$ROOT_VERSION" != "$PLUGIN_VERSION" ] || [ "$ROOT_VERSION" != "$GEMINI_VERSION" ]; then
+    fail "version-consistency: root=$ROOT_VERSION, .claude-plugin=$PLUGIN_VERSION, gemini=$GEMINI_VERSION"
 else
-    pass "version-consistency: both plugin.json files at v$ROOT_VERSION"
+    pass "version-consistency: all manifest files at v$ROOT_VERSION"
 fi
 
 

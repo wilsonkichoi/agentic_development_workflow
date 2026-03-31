@@ -13,7 +13,11 @@ Changes to skills, agents, or workflow docs must preserve these invariants (from
 
 ## Version Bumping
 
-When modifying skills, agents, or workflow behavior, bump the `version` field in **both** `.claude-plugin/plugin.json` and `plugin.json` (root). They must stay in sync. Use semver: patch for fixes, minor for features, major for breaking changes.
+When modifying skills, agents, or workflow behavior, bump the `version` field in **all three** manifest files. They must stay in sync. Use semver: patch for fixes, minor for features, major for breaking changes.
+
+- `.claude-plugin/plugin.json` — Claude Code
+- `plugin.json` (root) — Copilot CLI
+- `gemini-extension.json` — Gemini CLI
 
 ## Multi-Tool Compatibility
 
