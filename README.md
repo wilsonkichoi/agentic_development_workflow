@@ -127,6 +127,19 @@ copilot plugin list
 copilot plugin uninstall agentic-dev
 ```
 
+### Gemini CLI
+
+```bash
+# Update the extension
+gemini extensions update agentic-development-workflow
+
+# View installed extensions
+gemini extensions list
+
+# Uninstall
+gemini extensions uninstall agentic-development-workflow
+```
+
 ### Migrating from 1.x to 2.0.0
 
 v2.0.0 removes the `templates/` directory. Phase prompts are now inline in each skill's `SKILL.md`, and role definitions live in `agents/` as the single source of truth.

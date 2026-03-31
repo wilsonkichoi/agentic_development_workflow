@@ -9,6 +9,7 @@ Guide for working on the Agentic Development Workflow plugin.
   plugin.json            Name, version, description, keywords, component paths
   marketplace.json       Self-hosted marketplace for distribution
 plugin.json              Copilot CLI plugin manifest
+gemini-extension.json    Gemini CLI extension manifest
 
 skills/                  Skills (7 total, each is a single SKILL.md)
   init-project/          /agentic-dev:init-project
@@ -117,9 +118,9 @@ You are a [role description].
 - Each agent should be 30-45 lines. If it's longer, you're probably over-specifying.
 - Add an `## Output Format` section only for agents that produce structured deliverables (reviewers, QA).
 
-### Copilot CLI compatibility
+### Multi-tool compatibility
 
-Both Claude Code and Copilot CLI use `<name>.agent.md` as the agent file format. The `.agent.md` files are the canonical source of truth and are tracked in git.
+Claude Code, Copilot CLI, and Gemini CLI all use `<name>.agent.md` as the agent file format and `skills/<name>/SKILL.md` for skills. The `.agent.md` and `SKILL.md` files are the canonical source of truth and are tracked in git. Do not add tool-specific syntax to these shared files.
 
 ## What to Pay Attention To
 
@@ -133,7 +134,7 @@ Every agent file must have a `description` in its YAML frontmatter. Without it, 
 
 ### Plugin version
 
-Bump the `version` field in both `plugin.json` and `.claude-plugin/plugin.json` for releases. Users with auto-update enabled get the new version when the version changes.
+Bump the `version` field in all three manifests for releases: `.claude-plugin/plugin.json`, `plugin.json` (root), and `gemini-extension.json`. They must stay in sync. Users with auto-update enabled get the new version when the version changes.
 
 ## Testing Locally
 
@@ -145,12 +146,11 @@ make test     # Runs tests/test.sh
 
 The test suite (`tests/test.sh`) covers:
 1. **plugin-validate** — `claude plugin validate .` (skipped if CLI not available)
-
-4. **skill-files** — each skill has SKILL.md
-5. **skill-frontmatter** — each SKILL.md has valid YAML frontmatter with `name:` matching directory and non-empty `description:`
-6. **agent-frontmatter** — each `.agent.md` has YAML frontmatter with non-empty `description:`
-7. **agent-count** — number of agents matches what README.md claims
-8. **version-consistency** — `version` in root `plugin.json` matches `.claude-plugin/plugin.json`
+2. **skill-files** — each skill has SKILL.md
+3. **skill-frontmatter** — each SKILL.md has valid YAML frontmatter with `name:` matching directory and non-empty `description:`
+4. **agent-frontmatter** — each `.agent.md` has YAML frontmatter with non-empty `description:`
+5. **agent-count** — number of agents matches what README.md claims
+6. **version-consistency** — `version` matches across all three manifests (`.claude-plugin/plugin.json`, `plugin.json`, `gemini-extension.json`)
 
 
 For a complete pre-PR checklist, also do the manual checks:
@@ -188,7 +188,7 @@ Include:
 2. Run `claude plugin validate .` — must pass
 3. Test affected skills locally
 4. Keep commits focused — one concern per commit
-5. If this is a release, bump `version` in both `plugin.json` and `.claude-plugin/plugin.json`
+5. If this is a release, bump `version` in all three manifests (`.claude-plugin/plugin.json`, `plugin.json`, `gemini-extension.json`)
 
 ### Review criteria
 

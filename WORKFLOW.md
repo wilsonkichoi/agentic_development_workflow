@@ -1,6 +1,6 @@
 # AI-Assisted Software Development Workflow
 
-A structured, 5-phase framework for building software with AI coding agents (Claude Code + Copilot CLI).
+A structured, 5-phase framework for building software with AI coding agents (Claude Code, Copilot CLI, and Gemini CLI).
 
 ## Quick Start
 
@@ -31,6 +31,16 @@ The plugin includes 7 skills (init + 5 phases + review) and 13 role-based agents
 
 ```bash
 copilot plugin install wilsonkichoi/agentic_development_workflow
+```
+
+### Gemini CLI
+
+```bash
+# Install, disable globally, enable per-workspace
+gemini extensions install https://github.com/wilsonkichoi/agentic_development_workflow
+gemini extensions disable agentic-development-workflow --scope user
+cd /path/to/your-project
+gemini extensions enable agentic-development-workflow --scope workspace
 ```
 
 ### Local plugin testing (development)
@@ -527,6 +537,21 @@ copilot --model claude-opus-4.6 --autopilot --max-autopilot-continues 30 \
 ```
 
 **Context limit:** ~128K tokens for Opus 4.6 (as of March 2026 — this is a moving target that changes frequently). Auto-compaction triggers at 95%.
+
+### Gemini CLI
+
+| Feature | Command | Use For |
+|---------|---------|---------|
+| Install extension | `gemini extensions install URL` | Add plugin |
+| Disable globally | `gemini extensions disable NAME --scope user` | Keep plugin off by default |
+| Enable per-workspace | `gemini extensions enable NAME --scope workspace` | Scope to specific project |
+| Agent invocation | `gemini --agent=backend-engineer` | Role-matched execution |
+| Subagents | `@agent-name` mention | Delegate to specific agent |
+
+```bash
+# Phase 4: Execute with agent
+gemini --agent=backend-engineer "Implement task 1.1 from workflow/plan/PLAN.md"
+```
 
 ---
 
