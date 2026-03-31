@@ -203,8 +203,8 @@ Role definitions are available as agents — see `/agents` when using the plugin
 9. **Review loop (after task/wave completion, before PR):**
    Use `/agentic-dev:review` to run an independent code review and spec compliance check. The review file (`wave-N.md` or `task-X.Y.md`) is the single source of truth — any AI session in any tool can read it and continue the loop.
    - `a.` `/agentic-dev:review wave N` (or `task X.Y`) — independent code review, produces review file with severity-ranked issues.
-   - `b.` Execute AI proposes a fix plan in the review file's `## Review Discussion`.
-   - `c.` `/agentic-dev:review fix-plan wave N` — validate fix plan (optional, can use a different tool for independent perspective). Run multiple times with different AIs; results accumulate.
+   - `b.` `/agentic-dev:review fix-plan wave N` — generate fix plan from review issues.
+   - `c.` `/agentic-dev:review fix-plan wave N` (optional, different AI) — validate existing fix plan. Run multiple times with different AIs; results accumulate.
    - `d.` `/agentic-dev:execute` — apply approved fixes, appends `### Fix Results` to the review file.
    - `e.` `/agentic-dev:review verify-fixes wave N` — verify fixes were applied correctly.
    - Alternatively, use `/agentic-dev:review full wave N` to run steps a-c in one session using subagents for independent validation.

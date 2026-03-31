@@ -12,7 +12,7 @@ Reviews completed Phase 4 work for code quality, spec compliance, and correctnes
 ## Review Modes
 
 - **`review wave N`** / **`review task X.Y`** — Code review, spec compliance, acceptance criteria, severity-ranked issues
-- **`fix-plan wave N`** / **`fix-plan task X.Y`** — Validate/challenge an existing fix plan (append-only — run multiple times with different AIs)
+- **`fix-plan wave N`** / **`fix-plan task X.Y`** — Generate a fix plan from review issues, or validate an existing one (append-only — run multiple times with different AIs)
 - **`verify-fixes wave N`** / **`verify-fixes task X.Y`** — Verify actual code changes after fixes were applied
 - **`full wave N`** / **`full task X.Y`** — Single-session orchestration: review + generate fix plan + validate via subagent, then STOP
 
@@ -24,7 +24,8 @@ Each mode writes a known section heading. The next mode checks for it as a preco
 review ──writes──> ## Issues Found + ## Summary
                         │
                         ▼ (precondition)
-fix-plan ──writes──> ### Fix Plan Analysis (under ## Review Discussion)
+fix-plan ─┬─(no plan)──writes──> ### Fix Plan (under ## Review Discussion)
+           └─(plan exists)──writes──> ### Fix Plan Analysis (under ## Review Discussion)
                         │
                         ▼ (human approves, /agentic-dev:execute applies fixes)
                         │  execute writes ──> ### Fix Results
@@ -163,36 +164,56 @@ Reviewer: {{AI model/tool}}
 
 ### Mode: `fix-plan wave N` / `fix-plan task X.Y`
 
-**Role:** Activate `software-architect` agent (different perspective from code-reviewer).
+**Role:** Activate `software-architect` agent.
 
 **Precondition:** The review file must contain `## Issues Found` (wave) or `### Issues Found` (task). If not → STOP and tell the user: "No review found — run `/agentic-dev:review wave N` or `/agentic-dev:review task X.Y` first."
 
-**Also check:** A fix plan must exist in `## Review Discussion` (proposed by the execute AI or a previous `full` run). Look for a `### Fix Plan` heading. If not found → STOP and tell the user: "No fix plan found — have the execute AI propose a fix plan first, or run `/agentic-dev:review full` to generate one."
+**Branch:** Check `## Review Discussion` for a `### Fix Plan` heading.
 
-**Instructions:**
-1. Read the review file. Find the issues and the proposed fix plan.
-2. For each proposed fix, evaluate:
-   - Does it address the root cause, not just the symptom?
-   - Does it introduce new issues (regressions, security gaps, spec violations)?
-   - Does it violate coding standards or project conventions?
-   - Does it conflict with other fixes in the plan?
-   - Is the approach fundamentally sound? (Watch for wrong library choices, incorrect API usage, architectural violations.)
-3. Output a per-fix verdict: **approve** or **revise** with specific reasoning.
-4. If revising, propose an alternative approach.
+- **If `### Fix Plan` NOT found → Generate one:**
+  1. Read the wave/task review file to find all issues.
+  2. Read each `workflow/plan/reviews/task-X.Y.md` for tasks in scope. These are the primary source for bug tracking, obstacles, and key decisions that wave reviews summarize or omit.
+  3. **Independently verify each issue.** Read the actual source files cited in the review. Confirm the issue exists and understand the surrounding code. Do not take the review's characterization at face value.
+  4. **Critically evaluate suggested fixes** from the review. For each, ask: Is this the best approach? Are there alternatives? Does it have side effects or regressions? Is the scope right (too broad, too narrow)? The fix plan must reflect your own analysis — not restate the review's suggestions.
+  5. For each issue, propose a concrete fix: approach, files to modify, and execution order.
+  6. Append under `## Review Discussion` in the review file:
+     ```markdown
+     ### Fix Plan ({{AI model/tool}} — {{DATE}})
 
-**Output:** Append under `## Review Discussion` in the review file:
-```markdown
-### Fix Plan Analysis ({{AI model/tool}} — {{DATE}})
+     **Issue 1 ({{title}})**
+     - Verified: {{how the issue was independently confirmed — what you read/ran}}
+     - Alternatives considered: {{other approaches evaluated and why they were rejected}}
+     - Fix: {{chosen approach and why}}
+     - Files: {{list}}
 
-**Issue 1 ({{title}}) — Approve**
-Fix approach is correct. {{brief reasoning}}
+     **Execution order:** {{ordered steps}}
+     **Verification:** {{commands to run after fixes}}
+     ```
+  7. Tell the user: "Fix plan generated. Review it in {{review_file_path}}. To validate with an independent perspective, run `fix-plan` again (optionally with a different AI). To apply fixes: `/agentic-dev:execute fix the issues according to {{review_file_path}}`"
 
-**Issue 2 ({{title}}) — Revise**
-The proposed approach is flawed because {{reason}}.
-**Alternative:** {{revised approach}}
-```
+- **If `### Fix Plan` found → Validate it:**
+  1. Read the review file. Find the issues and the proposed fix plan.
+  2. For each proposed fix, evaluate:
+     - Does it address the root cause, not just the symptom?
+     - Does it introduce new issues (regressions, security gaps, spec violations)?
+     - Does it violate coding standards or project conventions?
+     - Does it conflict with other fixes in the plan?
+     - Is the approach fundamentally sound? (Watch for wrong library choices, incorrect API usage, architectural violations.)
+  3. Output a per-fix verdict: **approve** or **revise** with specific reasoning.
+  4. If revising, propose an alternative approach.
+  5. Append under `## Review Discussion` in the review file:
+     ```markdown
+     ### Fix Plan Analysis ({{AI model/tool}} — {{DATE}})
 
-**Append-only:** Multiple AIs can run `fix-plan`. Each appends its own `### Fix Plan Analysis` entry. Results accumulate. The user or execute AI synthesizes the feedback.
+     **Issue 1 ({{title}}) — Approve**
+     Fix approach is correct. {{brief reasoning}}
+
+     **Issue 2 ({{title}}) — Revise**
+     The proposed approach is flawed because {{reason}}.
+     **Alternative:** {{revised approach}}
+     ```
+
+**Append-only:** Multiple AIs can run `fix-plan`. Each appends its own entry. Results accumulate. The user or execute AI synthesizes the feedback.
 
 ---
 
