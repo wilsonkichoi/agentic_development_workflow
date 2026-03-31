@@ -68,6 +68,13 @@ After installation:
 copilot plugin install wilsonkichoi/agentic_development_workflow
 ```
 
+After installation:
+- Skills are available as `/research`, `/spec`, `/plan`, `/execute`, `/review`, `/verify`
+- Agents appear in `/agent` (e.g., `backend-engineer`, `qa-engineer`)
+- Plugins install globally to `~/.copilot/state/installed-plugins/`
+
+> **Note:** Copilot CLI does not support per-project plugin scoping. Installed plugins are always global — there is no `--scope` flag or disable/enable per workspace (unlike Gemini CLI). If you need project-level control, use Claude Code's local scope install or Gemini CLI's workspace scope instead.
+
 ### Gemini CLI
 
 To avoid polluting the global context, install the extension globally but keep it disabled by default. Enable it strictly on a per-workspace basis:
@@ -107,6 +114,19 @@ claude --plugin-dir /path/to/agentic_development_workflow
 
 **Important:** After updating, start a new session (`/clear` or new terminal). Skill file paths are cached per session and `/reload-plugins` may not fully refresh them.
 
+### Copilot CLI
+
+```bash
+# Update the plugin
+copilot plugin update agentic-dev
+
+# View installed plugins
+copilot plugin list
+
+# Uninstall
+copilot plugin uninstall agentic-dev
+```
+
 ### Migrating from 1.x to 2.0.0
 
 v2.0.0 removes the `templates/` directory. Phase prompts are now inline in each skill's `SKILL.md`, and role definitions live in `agents/` as the single source of truth.
@@ -126,7 +146,7 @@ v2.0.0 removes the `templates/` directory. Phase prompts are now inline in each 
 /plugin marketplace update wilsonkichoi-agentic-dev
 
 # Copilot CLI
-copilot plugin update wilsonkichoi/agentic_development_workflow
+copilot plugin update agentic-dev
 
 ```
 

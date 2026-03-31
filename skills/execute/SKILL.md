@@ -15,12 +15,21 @@ Executes Phase 4 (Execution) of the AI-Assisted Development Workflow.
 - **Entire wave:** `/agentic-dev:execute wave 1`
 - **Default (no argument):** Find and execute the next incomplete task.
 
-When executing a **wave**, run each task in the wave sequentially. Each task gets its own branch (`task/X.Y-short-title`). Complete the full cycle (branch → implement → verify → review file → progress update) for each task before starting the next.
+When executing a **wave**, check task dependencies within the wave (each task block has a `Depends on:` field). Run independent tasks (no intra-wave dependencies) in parallel using worktree isolation (`isolation: "worktree"`). Tasks that depend on other tasks in the same wave must wait for their dependency to finish. Each task gets its own branch (`task/X.Y-short-title`). Complete the full cycle (branch → implement → verify → review file → progress update) for each task.
+
+**Wave branch lifecycle (sequential tasks in the same session):**
+
+1. After completing a task, **commit all changes** on the task branch before moving on.
+2. `git checkout main` before starting the next task.
+3. Create the next task's branch from `main`.
+4. If the next task depends on a completed task in the same wave, merge the dependency branch first: `git merge task/X.Y-dep-branch`.
+
+Worktree-isolated parallel tasks handle this automatically — each agent gets its own copy of the repo.
 
 ## Important
 
 - **Branch isolation is mandatory.** Every task MUST be on its own branch: `task/X.Y-short-title`. Do NOT work on `main`.
-- **One task per session.** Start fresh (`/clear`) before each task. For wave execution, `/clear` between tasks.
+- **One task per session.** Start fresh (`/clear`) before each task. Parallel wave tasks each run as separate agents with worktree isolation, so they inherently start with clean context.
 - **Test tasks must NOT share context** with the implementation they're testing.
 - Use **worktree isolation** when available: `claude -w task/X.Y-short-title --model opus`
 - Match the **agent role** to the task type (see `/agents` for available roles).
@@ -154,7 +163,7 @@ Provide a brief summary:
 5. Any spec gaps or issues discovered
 6. Confirm that `workflow/plan/reviews/task-{{X.Y}}.md` has been created
 7. Confirm that `workflow/plan/PROGRESS.md` has been updated
-8. Next step: Use `/agentic-dev:review wave N` or `/agentic-dev:review task X.Y` for independent code review and spec compliance checking.
+8. Next step: Use `/agentic-dev:review wave N` or `/agentic-dev:review task X.Y` for independent code review and spec compliance checking. The review skill will mark the task `done` in PROGRESS.md when validation passes and signal merge/PR readiness.
 
 **HUMAN REVIEW PROCESS:**
 
@@ -165,8 +174,12 @@ After you complete the task, the human will review the diff and `workflow/plan/r
 - Do not overwrite previous discussion — append new responses below existing conversation.
 - When the human is satisfied, they will instruct you to create a PR.
 
-**PR CREATION (on human instruction only):**
+**MERGE / PR CREATION (on human instruction only):**
 
-Create a pull request with:
-- Title: `Task {{X.Y}}: {{Task Title}}`
-- Body: what was implemented, which PLAN.md task this addresses, test results, spec gaps found, worktree/branch name
+1. Verify the task status is `done` in `workflow/plan/PROGRESS.md`. If still `review`, warn: "Task X.Y has not been validated by the review skill. Run `/agentic-dev:review` first, or confirm you want to proceed."
+2. **Direct merge (solo projects):**
+   - `git checkout main && git merge task/{{X.Y}}-{{short-title}} && git branch -d task/{{X.Y}}-{{short-title}}`
+3. **Create PR (team projects):**
+   - Title: `Task {{X.Y}}: {{Task Title}}`
+   - Body: what was implemented, which PLAN.md task this addresses, test results, spec gaps found, worktree/branch name
+   - Add the PR link to `workflow/plan/PROGRESS.md`.

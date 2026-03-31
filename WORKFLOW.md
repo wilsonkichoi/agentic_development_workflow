@@ -199,8 +199,8 @@ Role definitions are available as agents — see `/agents` when using the plugin
    - `e.` `/agentic-dev:review verify-fixes wave N` — verify fixes were applied correctly.
    - Alternatively, use `/agentic-dev:review full wave N` to run steps a-c in one session using subagents for independent validation.
    - Human reviews the results at each step. If changes needed: human adds `*FEEDBACK:*` comments. Discussion is append-only.
-   - If satisfactory: human instructs AI to create a PR.
-10. **Create PR:** PR description includes: what was implemented, which PLAN.md task, test results, spec gaps found, branch name.
+   - If satisfactory (no issues, or all fixes verified): review skill marks task `done` in PROGRESS.md and signals merge/PR readiness.
+10. **Merge / Create PR (human-gated):** Human instructs AI to merge directly (solo) or create a PR (team). PR description includes: what was implemented, which PLAN.md task, test results, spec gaps found, branch name. PR link is added to PROGRESS.md.
 11. **Fresh context:** Start each new task with a clean context (`/clear` or new session). Avoid `/compact` — lossy summarization increases hallucination risk.
 12. **Repeat** until all tasks in the current wave are done.
 
@@ -224,7 +224,15 @@ Use this 5-step framework. Attempt ALL steps before escalating.
 - Updated `workflow/plan/PROGRESS.md`
 - `workflow/plan/reviews/task-X.Y.md` for every task
 - `workflow/plan/reviews/wave-N.md` for wave-level reviews (produced by `/agentic-dev:review`)
-- Pull request per task (created on human instruction)
+- Pull request per task or wave (created on human instruction, after review marks task `done`)
+
+**PROGRESS.md status lifecycle:**
+
+| Status | Set by | Meaning |
+|--------|--------|---------|
+| `pending` | Plan skill | Task not started |
+| `review` | Execute skill | Implemented, awaiting review |
+| `done` | Review skill | Validated, ready for merge/PR |
 
 **Gate:** Human reviews the diff and task review file. Code is NOT merged until human approves and instructs PR creation.
 

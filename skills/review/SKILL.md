@@ -152,6 +152,13 @@ Reviewer: {{AI model/tool}}
 
 **If no issues found:** Produce the full review with checklists and spec alignment table. State "No issues found" in the Summary with a brief note on what was checked.
 
+**If no issues found — post-review actions:**
+- Update task status to `done` in `workflow/plan/PROGRESS.md` for each reviewed task.
+- Tell the user: "Review complete — no issues found. Task(s) X.Y are marked `done`. Branch `task/X.Y-short-title` is ready to merge."
+- Offer next steps:
+  - **Direct merge (solo):** `git checkout main && git merge task/X.Y-short-title && git branch -d task/X.Y-short-title`
+  - **Create PR (team):** instruct the execute skill or run `gh pr create`
+
 ---
 
 ### Mode: `fix-plan wave N` / `fix-plan task X.Y`
@@ -220,6 +227,14 @@ The fix for Issue 3 broke {{what was broken}}.
 
 **Verdict:** {{N}}/{{total}} issues resolved. {{action needed if any remain}}
 ```
+
+6. **Post-verification (when all issues are resolved):**
+   - Update task status to `done` in `workflow/plan/PROGRESS.md` for each verified task.
+   - Tell the user: "All issues verified. Task(s) X.Y are marked `done`. Branch `task/X.Y-short-title` is ready to merge."
+   - Offer next steps:
+     - **Direct merge (solo):** `git checkout main && git merge task/X.Y-short-title && git branch -d task/X.Y-short-title`
+     - **Create PR (team):** instruct the execute skill or run `gh pr create`
+   - If any issues remain unresolved, do NOT update status. Tell the user which issues need another fix cycle.
 
 ---
 
