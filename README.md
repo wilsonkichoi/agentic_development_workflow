@@ -40,7 +40,7 @@ Each phase produces persistent documents (SPEC.md, PLAN.md, PROGRESS.md, decisio
 
 | Component | Count | Description |
 |-----------|-------|-------------|
-| **Skills** | 7 | `init-project`, `research`, `spec`, `plan`, `execute`, `review`, `verify` |
+| **Skills** | 8 | `init-project`, `research`, `spec`, `plan`, `execute`, `review`, `verify`, `auto` |
 | **Agents** | 13 | Software Architect, Backend Engineer, QA Engineer, Security Reviewer, and more |
 
 ## Installation
@@ -230,6 +230,7 @@ my-project/
 | 4. Execution | `/agentic-dev:execute` | Implement one task with role-matched agent |
 | 4b. Review | `/agentic-dev:review` | Code review, fix plan validation, fix verification |
 | 5. Verification | `/agentic-dev:verify` | End-to-end testing + retrospective |
+| Auto | `/agentic-dev:auto` | Full pipeline (execute+review+fix+verify) per wave or milestone |
 
 ### Using Agents (Phase 4)
 

@@ -11,7 +11,7 @@ Guide for working on the Agentic Development Workflow plugin.
 plugin.json              Copilot CLI plugin manifest
 gemini-extension.json    Gemini CLI extension manifest
 
-skills/                  Skills (7 total, each is a single SKILL.md)
+skills/                  Skills (8 total, each is a single SKILL.md)
   init-project/          /agentic-dev:init-project
   research/              /agentic-dev:research (Phase 1)
   spec/                  /agentic-dev:spec (Phase 2)
@@ -19,6 +19,7 @@ skills/                  Skills (7 total, each is a single SKILL.md)
   execute/               /agentic-dev:execute (Phase 4)
   review/                /agentic-dev:review (Review loop)
   verify/                /agentic-dev:verify (Phase 5)
+  auto/                  /agentic-dev:auto (Automated pipeline)
 
 agents/                  Role-based agents (13 total, show in /agents)
   software-architect.agent.md
