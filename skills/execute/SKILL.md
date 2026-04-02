@@ -15,16 +15,34 @@ Executes Phase 4 (Execution) of the AI-Assisted Development Workflow.
 - **Entire wave:** `/agentic-dev:execute wave 1`
 - **Default (no argument):** Find and execute the next incomplete task.
 
-When executing a **wave**, check task dependencies within the wave (each task block has a `Depends on:` field). Run independent tasks (no intra-wave dependencies) in parallel using worktree isolation (`isolation: "worktree"`). Tasks that depend on other tasks in the same wave must wait for their dependency to finish. Each task gets its own branch (`task/X.Y-short-title`). Complete the full cycle (branch → implement → verify → review file → progress update) for each task.
+When executing a **wave**, first create a **feature branch** from `main` to contain all wave work:
+
+```
+git checkout main && git checkout -b feature/m{{M}}-wave{{W}}-{{short-description}}
+```
+
+Branch naming: `feature/m{{M}}-wave{{W}}-{{short-description}}` (e.g., `feature/m2-wave1-backend-models-upload-ui`). The feature branch is the integration point for all task branches in this wave. It merges to `main` only after the review-fix loop completes with all issues resolved.
+
+Check task dependencies within the wave (each task block has a `Depends on:` field). Run independent tasks (no intra-wave dependencies) in parallel using worktree isolation (`isolation: "worktree"`). Tasks that depend on other tasks in the same wave must wait for their dependency to finish. Each task gets its own branch (`task/X.Y-short-title`) **created from the feature branch**. Complete the full cycle (branch → implement → verify → review file → progress update) for each task.
 
 **Wave branch lifecycle (sequential tasks in the same session):**
 
 1. After completing a task, **commit all changes** on the task branch before moving on.
-2. `git checkout main` before starting the next task.
-3. Create the next task's branch from `main`.
-4. If the next task depends on a completed task in the same wave, merge the dependency branch first: `git merge task/X.Y-dep-branch`.
+2. **Merge the task branch into the feature branch:**
+   ```
+   git checkout feature/m{{M}}-wave{{W}}-{{short-description}}
+   git merge task/X.Y-short-title
+   git branch -d task/X.Y-short-title
+   ```
+3. Create the next task's branch **from the feature branch** (not from `main`):
+   ```
+   git checkout -b task/X.Y-next-title
+   ```
+4. If the next task depends on a completed task in the same wave, that dependency is already merged into the feature branch — no extra merge needed.
 
-Worktree-isolated parallel tasks handle this automatically — each agent gets its own copy of the repo.
+Worktree-isolated parallel tasks branch from the feature branch — each agent gets its own worktree with the feature branch as base.
+
+**Note:** If executing individual tasks sequentially (not as a wave), each task follows the single-task flow — branch from `main`, review individually, merge to `main`. Use `execute wave N` when you want batch review with feature branch isolation.
 
 ## Important
 
@@ -63,10 +81,17 @@ Read `workflow/spec/SPEC.md` section: {{RELEVANT_SECTION_NAME}}
 **INSTRUCTIONS:**
 
 1. **Branch isolation (mandatory).** Before writing any code, create a git branch for this task:
-   ```
-   git checkout -b task/{{X.Y}}-{{short-title}}
-   ```
-   All work for this task MUST happen on this branch. Do NOT work directly on `main`.
+   - **During wave execution** (feature branch exists): branch from the feature branch:
+     ```
+     git checkout feature/m{{M}}-wave{{W}}-{{short-description}}
+     git checkout -b task/{{X.Y}}-{{short-title}}
+     ```
+   - **Single task execution** (no feature branch): branch from `main`:
+     ```
+     git checkout main
+     git checkout -b task/{{X.Y}}-{{short-title}}
+     ```
+   All work for this task MUST happen on this branch. Do NOT work directly on `main` or the feature branch.
    If using Claude Code worktrees, this is handled by `claude -w task/{{X.Y}}-{{short-title}}`.
 2. Implement the task exactly as specified. Follow the coding standards and your role's priorities.
 3. After implementation, run these checks:
@@ -81,6 +106,7 @@ Read `workflow/spec/SPEC.md` section: {{RELEVANT_SECTION_NAME}}
    # Task {{X.Y}}: {{Title}}
 
    ## Work Summary
+   - **Branch:** `{{task branch name}}` (based on `{{feature branch or main}}`)
    - **What was implemented:** {1-2 sentences}
    - **Key decisions:** {any non-trivial choices made during implementation}
    - **Files created/modified:** {list}
@@ -125,15 +151,23 @@ Use this 5-step framework. Attempt ALL steps before escalating.
 
 **FIX MODE (when fixing issues from a review file):**
 
-If the user directs you to fix issues from a review file (e.g., `wave-N.md` or `task-X.Y.md`):
+If the user directs you to fix issues from a review file (e.g., `wave-mM-N.md` or `task-X.Y.md`):
 
-1. Read the review file. Find `## Issues Found` (wave review) or `### Issues Found` (task-level review under `## Code Review`).
+1. Read the review file. Find `### Issues Found` sections (under each `## Task X.Y` heading in wave reviews, or under `## Code Review` in task reviews).
 2. Read any fix plan discussion in `## Review Discussion` — look for `### Fix Plan` and any `### Fix Plan Analysis` entries. If multiple AIs analyzed the plan, synthesize their feedback. If a fix was flagged as "revise", follow the revised approach.
-3. Implement all approved fixes. Run verification commands (lint, type check, tests, acceptance criteria).
-4. Append `### Fix Results` under `## Review Discussion` in the review file:
+3. **Branch from the feature branch** if one exists for this wave. Fix branches should be created from the feature branch, not from `main`:
+   ```
+   git checkout feature/m{{M}}-wave{{W}}-{{short-description}}
+   git checkout -b fix/{{X.Y}}-{{issue-title}}
+   ```
+   If running multiple fix tasks in parallel, use worktree isolation branching from the feature branch. If no feature branch exists (single-task fix), branch from `main`.
+4. Implement all approved fixes. Run verification commands (lint, type check, tests, acceptance criteria).
+5. Append `### Fix Results` under `## Review Discussion` in the review file:
 
    ```
    ### Fix Results ({{AI model/tool}} — {{DATE}})
+
+   **Branch:** `{{fix branch name}}` (based on `{{parent branch — feature branch or main}}`)
 
    **Issue N ({{title}}) — Fixed**
    - What was changed: {{1-2 sentences}}
@@ -147,13 +181,16 @@ If the user directs you to fix issues from a review file (e.g., `wave-N.md` or `
    - {{test command}} — PASS/FAIL
    ```
 
-5. After fixes, the user can run `/agentic-dev:review verify-fixes wave N` to independently verify.
+6. **STOP.** Do NOT merge, do NOT create a PR. Report what was fixed and the verification results. Tell the user:
+   - "Fixes applied on branch `fix/X.Y-issue-title`. Verification: {{results}}."
+   - "To verify independently: `/agentic-dev:review verify-fixes wave N`"
+   - "To merge after verification: instruct me to merge."
 
 **README UPDATE:**
 
 If this task adds user-facing functionality (CLI commands, API endpoints, UI features), update the **Usage** section of `README.md` with examples showing how to use what was just built. Skip this for internal/infrastructure tasks.
 
-**WHEN DONE:**
+**WHEN DONE (task execution only — does not apply to fix mode):**
 
 Provide a brief summary:
 1. Branch name (e.g., `task/1.1-implement-functions`)
@@ -163,7 +200,9 @@ Provide a brief summary:
 5. Any spec gaps or issues discovered
 6. Confirm that `workflow/plan/reviews/task-{{X.Y}}.md` has been created
 7. Confirm that `workflow/plan/PROGRESS.md` has been updated
-8. Next step: Use `/agentic-dev:review wave N` or `/agentic-dev:review task X.Y` for independent code review and spec compliance checking. The review skill will mark the task `done` in PROGRESS.md when validation passes and signal merge/PR readiness.
+8. Next step: Use `/agentic-dev:review wave N` or `/agentic-dev:review task X.Y` for independent code review and spec compliance checking. The review skill will mark the task `done` in PROGRESS.md when validation passes and signal merge readiness.
+   - **During wave execution:** Task branches merge into the feature branch (not `main`). The feature branch merges to `main` only after the full review-fix loop completes.
+   - **Single task execution:** Task branch merges to `main` after review.
 
 **HUMAN REVIEW PROCESS:**
 
@@ -174,12 +213,32 @@ After you complete the task, the human will review the diff and `workflow/plan/r
 - Do not overwrite previous discussion — append new responses below existing conversation.
 - When the human is satisfied, they will instruct you to create a PR.
 
-**MERGE / PR CREATION (on human instruction only):**
+**MERGE / PR CREATION (task execution only, on human instruction only — fix mode has its own stop point above):**
 
 1. Verify the task status is `done` in `workflow/plan/PROGRESS.md`. If still `review`, warn: "Task X.Y has not been validated by the review skill. Run `/agentic-dev:review` first, or confirm you want to proceed."
-2. **Direct merge (solo projects):**
-   - `git checkout main && git merge task/{{X.Y}}-{{short-title}} && git branch -d task/{{X.Y}}-{{short-title}}`
-3. **Create PR (team projects):**
-   - Title: `Task {{X.Y}}: {{Task Title}}`
-   - Body: what was implemented, which PLAN.md task this addresses, test results, spec gaps found, worktree/branch name
-   - Add the PR link to `workflow/plan/PROGRESS.md`.
+
+**Task branch → feature branch (during wave execution):**
+
+2. After each task completes within a wave, merge its task branch into the feature branch:
+   - `git checkout feature/m{{M}}-wave{{W}}-{{short-description}} && git merge task/{{X.Y}}-{{short-title}} && git branch -d task/{{X.Y}}-{{short-title}}`
+   - This happens as part of the wave lifecycle (see "Wave branch lifecycle" above), typically before the review-fix loop.
+
+**Feature branch → main (after review-fix loop completes):**
+
+3. After the review-fix loop fully completes (all issues resolved, all tasks marked `done`), merge the feature branch to `main`:
+   - **Direct merge (solo projects):**
+     - `git checkout main && git merge feature/m{{M}}-wave{{W}}-{{short-description}} && git branch -d feature/m{{M}}-wave{{W}}-{{short-description}}`
+   - **Create PR (team projects):**
+     - Title: `Wave {{W}} (M{{M}}): {{Wave Title}}`
+     - Body: tasks included, what was implemented, test results, spec gaps found, review file reference
+     - Add the PR link to `workflow/plan/PROGRESS.md`.
+
+**Single task → main (no wave context):**
+
+4. If executing a single task outside wave context (no feature branch):
+   - **Direct merge (solo projects):**
+     - `git checkout main && git merge task/{{X.Y}}-{{short-title}} && git branch -d task/{{X.Y}}-{{short-title}}`
+   - **Create PR (team projects):**
+     - Title: `Task {{X.Y}}: {{Task Title}}`
+     - Body: what was implemented, which PLAN.md task this addresses, test results, spec gaps found, branch name
+     - Add the PR link to `workflow/plan/PROGRESS.md`.

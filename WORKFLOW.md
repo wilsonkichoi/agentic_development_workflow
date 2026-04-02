@@ -192,7 +192,7 @@ Role definitions are available as agents — see `/agents` when using the plugin
 **Inputs:** `workflow/plan/PLAN.md`, `workflow/spec/SPEC.md`, the codebase, relevant agent role (see `/agents`).
 
 **Process:**
-1. **Isolate:** Create a git branch `task/X.Y-short-title` (e.g., `task/1.1-implement-functions`). Do NOT work on `main`. With Claude Code: `claude -w task/X.Y-short-title --model opus`.
+1. **Isolate:** For wave execution, first create a **feature branch** from `main`: `feature/mM-waveW-short-description` (e.g., `feature/m2-wave1-backend-models`). Then create task branches from the feature branch: `task/X.Y-short-title`. Task branches merge back to the feature branch, not to `main`. The feature branch merges to `main` only after the review-fix loop completes. For single task execution, branch directly from `main`. With Claude Code: `claude -w task/X.Y-short-title --model opus`.
 2. **Pick next task:** Read PLAN.md, find the next incomplete task.
 3. **Match role:** Activate the appropriate agent for the task type (frontend dev for UI, backend engineer for API, etc.). See `/agents` for available roles.
 4. **Execute one task.** Feed the model the role definition + task description + relevant spec section.
@@ -201,7 +201,7 @@ Role definitions are available as agents — see `/agents` when using the plugin
 7. **Write task review:** Create `workflow/plan/reviews/task-X.Y.md` with a work summary: what was implemented, key decisions made, obstacles encountered and how they were solved.
 8. **Update progress:** Mark the task checkbox as `[x]` in PLAN.md. Set task status to `review` in PROGRESS.md. Note any issues.
 9. **Review loop (after task/wave completion, before PR):**
-   Use `/agentic-dev:review` to run an independent code review and spec compliance check. The review file (`wave-N.md` or `task-X.Y.md`) is the single source of truth — any AI session in any tool can read it and continue the loop.
+   Use `/agentic-dev:review` to run an independent code review and spec compliance check. The review file (`wave-mM-N.md` or `task-X.Y.md`) is the single source of truth — any AI session in any tool can read it and continue the loop.
    - `a.` `/agentic-dev:review wave N` (or `task X.Y`) — independent code review, produces review file with severity-ranked issues.
    - `b.` `/agentic-dev:review fix-plan wave N` — generate fix plan from review issues.
    - `c.` `/agentic-dev:review fix-plan wave N` (optional, different AI) — validate existing fix plan. Run multiple times with different AIs; results accumulate.
@@ -210,7 +210,10 @@ Role definitions are available as agents — see `/agents` when using the plugin
    - Alternatively, use `/agentic-dev:review full wave N` to run steps a-c in one session using subagents for independent validation.
    - Human reviews the results at each step. If changes needed: human adds `*FEEDBACK:*` comments. Discussion is append-only.
    - If satisfactory (no issues, or all fixes verified): review skill marks task `done` in PROGRESS.md and signals merge/PR readiness.
-10. **Merge / Create PR (human-gated):** Human instructs AI to merge directly (solo) or create a PR (team). PR description includes: what was implemented, which PLAN.md task, test results, spec gaps found, branch name. PR link is added to PROGRESS.md.
+10. **Merge / Create PR (human-gated, two-stage for waves):**
+    - **Task → feature branch:** During wave execution, each completed task merges into the wave's feature branch as part of the wave lifecycle.
+    - **Feature → main:** After the review-fix loop completes with all issues resolved, the human instructs AI to merge the feature branch to `main` (solo) or create a PR from the feature branch to `main` (team). PR description includes: tasks included, what was implemented, test results, spec gaps found, review file reference. PR link is added to PROGRESS.md.
+    - **Single task → main:** For tasks outside wave context, merge directly to `main` or create a PR, as before.
 11. **Fresh context:** Start each new task with a clean context (`/clear` or new session). Avoid `/compact` — lossy summarization increases hallucination risk.
 12. **Repeat** until all tasks in the current wave are done.
 
@@ -230,11 +233,12 @@ Use this 5-step framework. Attempt ALL steps before escalating.
 - Never silently skip a step because it seems unlikely to help.
 
 **Outputs:**
-- Working code committed per task (in feature branch, NOT merged)
+- Feature branch per wave: `feature/mM-waveW-short-description` (contains all task branches merged together)
+- Working code committed per task (in task branch, merged to feature branch after completion)
 - Updated `workflow/plan/PROGRESS.md`
 - `workflow/plan/reviews/task-X.Y.md` for every task
-- `workflow/plan/reviews/wave-N.md` for wave-level reviews (produced by `/agentic-dev:review`)
-- Pull request per task or wave (created on human instruction, after review marks task `done`)
+- `workflow/plan/reviews/wave-mM-N.md` for wave-level reviews (produced by `/agentic-dev:review`)
+- Pull request per wave (from feature branch to `main`, created on human instruction after review-fix loop completes)
 
 **PROGRESS.md status lifecycle:**
 
@@ -300,7 +304,7 @@ project-root/
 │   │   ├── PROGRESS.md                # Phase 4: live progress tracker
 │   │   └── reviews/                   # Phase 4: per-task and wave-level reviews
 │   │       ├── task-X.Y.md            # Per-task work summary (from execute skill)
-│   │       └── wave-N.md              # Wave-level review (from review skill)
+│   │       └── wave-mM-N.md           # Wave-level review (from review skill; e.g., wave-m2-1.md)
 │   ├── decisions/
 │   │   ├── README.md                  # Decision index
 │   │   └── DR-NNN-title.md            # Individual decision records
@@ -418,6 +422,7 @@ Every task in Phase 4 produces a review file at `workflow/plan/reviews/task-X.Y.
 # Task X.Y: {Title}
 
 ## Work Summary
+- **Branch:** `{task branch name}` (based on `{feature branch or main}`)
 - **What was implemented:** {1-2 sentences}
 - **Key decisions:** {any non-trivial choices made during implementation}
 - **Files created/modified:** {list}
@@ -569,7 +574,7 @@ gemini --agent=backend-engineer "Implement task 1.1 from workflow/plan/PLAN.md"
 | `workflow/plan/rfc.md` | Phase 3 | Updated during review loop | Phase 3 |
 | `workflow/plan/PROGRESS.md` | Phase 3 | Live-updated in Phase 4 | Phase 4, 5 |
 | `workflow/plan/reviews/task-X.Y.md` | Phase 4 | Updated during review loop | Phase 4, 5 |
-| `workflow/plan/reviews/wave-N.md` | Review loop | Append-only (issues, fix plans, fix results, verifications) | Phase 4, 5 |
+| `workflow/plan/reviews/wave-mM-N.md` | Review loop | Append-only (issues, fix plans, fix results, verifications) | Phase 4, 5 |
 | `workflow/decisions/DR-NNN-*.md` | Any phase | Updated during review loops | All phases, especially Phase 5 |
 | `RETRO-*.md` | Phase 5 | Updated during review loop, accumulates | Next Phase 1 |
 | `workflow/retro/review.md` | Phase 5 | Updated during review loop | Phase 5 |

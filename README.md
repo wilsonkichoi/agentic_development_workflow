@@ -256,7 +256,7 @@ Test tasks run in **separate sessions** from implementation tasks — the QA age
 
 **Task review files** — Every task gets `workflow/plan/reviews/task-X.Y.md` with a work summary and space for `*FEEDBACK:*` / `*AI:*` discussion before PR creation.
 
-**Review loop** — After execution, `/agentic-dev:review` produces durable review files (`wave-N.md` or appends to `task-X.Y.md`). Any AI session in any tool can read the review file and continue the loop: review issues, validate fix plans, verify fixes. No copy-paste between sessions — the review file is the connective tissue.
+**Review loop** — After execution, `/agentic-dev:review` produces durable review files (`wave-mM-N.md` or appends to `task-X.Y.md`). Any AI session in any tool can read the review file and continue the loop: review issues, validate fix plans, verify fixes. No copy-paste between sessions — the review file is the connective tissue. Review and fixes operate on the wave's feature branch; the feature branch merges to `main` only after all issues are resolved.
 
 **Parallel waves** — Independent tasks run concurrently when they belong to different components, have frozen API contracts, and share no mutable state.
 

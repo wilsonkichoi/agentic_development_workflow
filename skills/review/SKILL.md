@@ -39,14 +39,20 @@ verify-fixes ──writes──> ### Fix Verification (under ## Review Discussio
 **CONTEXT LOADING (all modes):**
 
 Before doing anything, read these files to build context:
-1. `workflow/plan/PLAN.md` — resolve "wave N" or "task X.Y" to specific tasks, acceptance criteria, and file lists
+1. `workflow/plan/PLAN.md` — resolve "wave N" or "task X.Y" to specific tasks, acceptance criteria, and file lists. Determine the milestone number M from the task numbering (task X.Y belongs to Milestone X).
 2. `workflow/spec/SPEC.md` — for spec compliance checking
 3. `workflow/spec/HANDOFF.md` — for milestone-level acceptance criteria
 4. `workflow/plan/PROGRESS.md` — for task status context
-5. Relevant `workflow/plan/reviews/task-X.Y.md` files — for each task in scope
-6. Existing `workflow/plan/reviews/wave-N.md` — if continuing a previous review
+5. Relevant `workflow/plan/reviews/task-X.Y.md` files — for each task in scope. Each task review file has a `**Branch:**` field in Work Summary that records the task branch name and its parent (feature branch or main).
+6. **Wave review file** — look for the existing wave review file. The naming convention may vary:
+   - `workflow/plan/reviews/wave-mM-N.md` (milestone-qualified, e.g., `wave-m2-1.md` for milestone 2, wave 1) — **preferred format**
+   - `workflow/plan/reviews/wave-N.md` (legacy format for single-milestone projects)
+   - Check for both patterns. Use whichever exists. When creating a new wave review file, use the milestone-qualified format: `wave-mM-N.md`.
 7. The actual source code files listed in each task's "Files created/modified"
-8. Git diffs: `git diff main..task/X.Y-*` for each task branch in scope
+8. **Branch and diffs:** Read the `**Branch:**` field from each task review file to identify the correct branches. Then:
+   - If task branches still exist: `git diff <parent-branch>..task/X.Y-*`
+   - If task branches were merged into a feature branch: check out the feature branch and review the code there
+   - If reviewing fixes: the `### Fix Results` section has a `**Branch:**` field — use that branch
 
 Read {{PROJECT_INSTRUCTION_FILE — e.g., CLAUDE.md}} for coding standards.
 
@@ -73,7 +79,7 @@ Read {{PROJECT_INSTRUCTION_FILE — e.g., CLAUDE.md}} for coding standards.
 7. Write a summary table: `| # | Severity | Task | Issue | Action |`
 
 **Output target:**
-- **Wave review** → create/update `workflow/plan/reviews/wave-N.md`
+- **Wave review** → create/update `workflow/plan/reviews/wave-mM-N.md` (e.g., `wave-m2-1.md` for milestone 2, wave 1). For single-milestone projects, `wave-N.md` is acceptable.
 - **Task review** → append `## Code Review` section to existing `workflow/plan/reviews/task-X.Y.md`
 
 **Wave review format:**
@@ -155,10 +161,14 @@ Reviewer: {{AI model/tool}}
 
 **If no issues found — post-review actions:**
 - Update task status to `done` in `workflow/plan/PROGRESS.md` for each reviewed task.
-- Tell the user: "Review complete — no issues found. Task(s) X.Y are marked `done`. Branch `task/X.Y-short-title` is ready to merge."
-- Offer next steps:
-  - **Direct merge (solo):** `git checkout main && git merge task/X.Y-short-title && git branch -d task/X.Y-short-title`
-  - **Create PR (team):** instruct the execute skill or run `gh pr create`
+- Tell the user: "Review complete — no issues found. Task(s) X.Y are marked `done`."
+- Offer next steps based on context:
+  - **During wave execution (feature branch exists):** "Feature branch `feature/mM-waveW-short-description` is ready to merge to `main`."
+    - **Direct merge (solo):** `git checkout main && git merge feature/mM-waveW-short-description && git branch -d feature/mM-waveW-short-description`
+    - **Create PR (team):** `gh pr create` from the feature branch to `main`
+  - **Single task (no feature branch):** "Branch `task/X.Y-short-title` is ready to merge."
+    - **Direct merge (solo):** `git checkout main && git merge task/X.Y-short-title && git branch -d task/X.Y-short-title`
+    - **Create PR (team):** instruct the execute skill or run `gh pr create`
 
 ---
 
@@ -166,13 +176,17 @@ Reviewer: {{AI model/tool}}
 
 **Role:** Activate `software-architect` agent.
 
-**Precondition:** The review file must contain `## Issues Found` (wave) or `### Issues Found` (task). If not → STOP and tell the user: "No review found — run `/agentic-dev:review wave N` or `/agentic-dev:review task X.Y` first."
+**Precondition:** Identify the **primary review file** and check it for issues:
+- **`fix-plan wave N`**: The primary source is the **wave review file** (`workflow/plan/reviews/wave-mM-N.md` or `wave-N.md` — see Context Loading step 6 for naming). Check it for `### Issues Found` sections (one per `## Task X.Y` heading in the wave review). If the wave review file does not exist or has no `### Issues Found` sections → STOP and tell the user: "No wave review found — run `/agentic-dev:review wave N` first."
+- **`fix-plan task X.Y`**: The primary source is `workflow/plan/reviews/task-X.Y.md`. Check for `### Issues Found` (under `## Code Review`). If not found → STOP and tell the user: "No task review found — run `/agentic-dev:review task X.Y` first."
 
-**Branch:** Check `## Review Discussion` for a `### Fix Plan` heading.
+The wave review file is the authoritative source for wave-scoped issues. Task review files (`task-X.Y.md`) provide supplementary context — key decisions, obstacles, implementation details that the wave review may summarize. Read both, but look for `### Issues Found` in the wave review file, not in task files.
+
+**Branch:** Check `## Review Discussion` in the primary review file for a `### Fix Plan` heading.
 
 - **If `### Fix Plan` NOT found → Generate one:**
-  1. Read the wave/task review file to find all issues.
-  2. Read each `workflow/plan/reviews/task-X.Y.md` for tasks in scope. These are the primary source for bug tracking, obstacles, and key decisions that wave reviews summarize or omit.
+  1. Read the **primary review file** (wave review for wave scope, task review for task scope) to find all issues.
+  2. Read each `workflow/plan/reviews/task-X.Y.md` for tasks in scope for supplementary context: bug tracking, obstacles, and key decisions that wave reviews may summarize or omit. The **issues to fix come from the primary review file**.
   3. **Independently verify each issue.** Read the actual source files cited in the review. Confirm the issue exists and understand the surrounding code. Do not take the review's characterization at face value.
   4. **Critically evaluate suggested fixes** from the review. For each, ask: Is this the best approach? Are there alternatives? Does it have side effects or regressions? Is the scope right (too broad, too narrow)? The fix plan must reflect your own analysis — not restate the review's suggestions.
   5. For each issue, propose a concrete fix: approach, files to modify, and execution order.
@@ -224,11 +238,12 @@ Reviewer: {{AI model/tool}}
 **Precondition:** The review file must contain `### Fix Results` (written by the execute skill after applying fixes). If not → STOP and tell the user: "No fix results found — execute the fixes first using `/agentic-dev:execute`."
 
 **Instructions:**
-1. Read the review file. Find all issues from `## Issues Found` and the fix results from `### Fix Results`.
-2. For each originally reported issue, verify the fix by reading the actual source code (not just the fix description).
-3. Run `git diff` to see what changed. Check that the change matches the intended fix.
-4. Look for regressions — did fixing one issue break something else?
-5. Run verification commands if specified (lint, type check, tests).
+1. Read the review file. Find all issues from `### Issues Found` and the fix results from `### Fix Results`.
+2. **Switch to the fix branch** listed in `### Fix Results` (the `**Branch:**` line). All verification must happen on that branch, not on `main`. If no branch is listed, check `git branch` for branches matching `fix/*` for the relevant task.
+3. For each originally reported issue, verify the fix by reading the actual source code (not just the fix description).
+4. Run `git diff` to see what changed. Check that the change matches the intended fix.
+5. Look for regressions — did fixing one issue break something else?
+6. Run verification commands if specified (lint, type check, tests).
 
 **Output:** Append under `## Review Discussion` in the review file:
 ```markdown
@@ -249,12 +264,16 @@ The fix for Issue 3 broke {{what was broken}}.
 **Verdict:** {{N}}/{{total}} issues resolved. {{action needed if any remain}}
 ```
 
-6. **Post-verification (when all issues are resolved):**
+7. **Post-verification (when all issues are resolved):**
    - Update task status to `done` in `workflow/plan/PROGRESS.md` for each verified task.
-   - Tell the user: "All issues verified. Task(s) X.Y are marked `done`. Branch `task/X.Y-short-title` is ready to merge."
-   - Offer next steps:
-     - **Direct merge (solo):** `git checkout main && git merge task/X.Y-short-title && git branch -d task/X.Y-short-title`
-     - **Create PR (team):** instruct the execute skill or run `gh pr create`
+   - Tell the user: "All issues verified. Task(s) X.Y are marked `done`."
+   - Offer next steps based on context:
+     - **During wave execution (feature branch exists):** "Feature branch `feature/mM-waveW-short-description` is ready to merge to `main`."
+       - **Direct merge (solo):** `git checkout main && git merge feature/mM-waveW-short-description && git branch -d feature/mM-waveW-short-description`
+       - **Create PR (team):** `gh pr create` from the feature branch to `main`
+     - **Single task (no feature branch):** "Branch `task/X.Y-short-title` is ready to merge."
+       - **Direct merge (solo):** `git checkout main && git merge task/X.Y-short-title && git branch -d task/X.Y-short-title`
+       - **Create PR (team):** instruct the execute skill or run `gh pr create`
    - If any issues remain unresolved, do NOT update status. Tell the user which issues need another fix cycle.
 
 ---
