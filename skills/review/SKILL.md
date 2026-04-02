@@ -184,19 +184,24 @@ The wave review file is the authoritative source for wave-scoped issues. Task re
 **Branch:** Check `## Review Discussion` in the primary review file for a `### Fix Plan` heading.
 
 - **If `### Fix Plan` NOT found → Generate one:**
-  1. Read the **primary review file** (wave review for wave scope, task review for task scope) to find all issues.
-  2. Read each `workflow/plan/reviews/task-X.Y.md` for tasks in scope for supplementary context: bug tracking, obstacles, and key decisions that wave reviews may summarize or omit. The **issues to fix come from the primary review file**.
-  3. **Independently verify each issue.** Read the actual source files cited in the review. Confirm the issue exists and understand the surrounding code. Do not take the review's characterization at face value.
-  4. **Critically evaluate suggested fixes** from the review. For each, ask: Is this the best approach? Are there alternatives? Does it have side effects or regressions? Is the scope right (too broad, too narrow)? The fix plan must reflect your own analysis — not restate the review's suggestions.
-  5. For each issue, propose a concrete fix: approach, files to modify, and execution order.
+
+  **Phase A — Blind source read (form your own assessment BEFORE reading the review):**
+  1. **Skim the review for locations only.** From the primary review file (wave review for wave scope, task review for task scope), extract ONLY: issue numbers, severity levels, and `file:line` references. **Do NOT read the full issue descriptions or suggested fixes yet.** Skip past them.
+  2. **Read source code and assess independently.** For each flagged `file:line`, read the surrounding code (±30 lines of context). For each location, write a brief internal note: what the code does, what could go wrong here, and what you would change. **Do this BEFORE reading the review's analysis.**
+
+  **Phase B — Compare and challenge:**
+  3. **Now read the full review.** Read the complete issue descriptions and suggested fixes from the primary review file. Also read each `workflow/plan/reviews/task-X.Y.md` for supplementary context (bug tracking, obstacles, key decisions). The **issues to fix come from the primary review file**.
+  4. **Compare your independent assessment with the review's.** For each issue: where do you agree? Where do you disagree? Did the review miss something you noticed? Did you miss something the review caught? If you agree with everything, explain specifically what in the source code led you to the same conclusion — "confirmed by reading X" is not sufficient.
+  5. **Propose fixes with risk analysis.** For each issue, propose a concrete fix: approach, files to modify. For each fix, state **one risk** — a way it could fail, regress, or need follow-up. If you can't identify a risk after investigation, explain what you checked.
   6. Append under `## Review Discussion` in the review file:
      ```markdown
      ### Fix Plan ({{AI model/tool}} — {{DATE}})
 
      **Issue 1 ({{title}})**
-     - Verified: {{how the issue was independently confirmed — what you read/ran}}
-     - Alternatives considered: {{other approaches evaluated and why they were rejected}}
-     - Fix: {{chosen approach and why}}
+     - Independent assessment: {{what you found reading the source BEFORE the review — your own characterization}}
+     - Review comparison: {{agree/disagree with review's characterization and why}}
+     - Fix: {{chosen approach}}
+     - Risk: {{one way this fix could fail or introduce a problem}}
      - Files: {{list}}
 
      **Execution order:** {{ordered steps}}
