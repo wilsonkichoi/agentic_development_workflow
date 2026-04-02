@@ -210,24 +210,28 @@ The wave review file is the authoritative source for wave-scoped issues. Task re
   7. Tell the user: "Fix plan generated. Review it in {{review_file_path}}. To validate with an independent perspective, run `fix-plan` again (optionally with a different AI). To apply fixes: `/agentic-dev:execute fix the issues according to {{review_file_path}}`"
 
 - **If `### Fix Plan` found → Validate it:**
-  1. Read the review file. Find the issues and the proposed fix plan.
-  2. For each proposed fix, evaluate:
-     - Does it address the root cause, not just the symptom?
-     - Does it introduce new issues (regressions, security gaps, spec violations)?
-     - Does it violate coding standards or project conventions?
-     - Does it conflict with other fixes in the plan?
-     - Is the approach fundamentally sound? (Watch for wrong library choices, incorrect API usage, architectural violations.)
-  3. Output a per-fix verdict: **approve** or **revise** with specific reasoning.
-  4. If revising, propose an alternative approach.
+
+  **Phase A — Blind source read (form your own fix approach BEFORE reading the existing plan):**
+  1. **Read the review's issues only.** From the review file, read the `### Issues Found` sections to understand what problems were identified. **Do NOT read the `### Fix Plan` yet.**
+  2. **Read source code and design your own fixes.** For each issue, read the cited source files. Decide how YOU would fix it — approach, files, risks. Write this down before proceeding.
+
+  **Phase B — Compare and verdict:**
+  3. **Now read the existing `### Fix Plan`.** Compare each proposed fix against your independently designed approach.
+  4. For each fix, output a verdict:
+     - **Approve** — your approach and the plan's approach align, or the plan's approach is better than yours. Explain why.
+     - **Revise** — your approach differs materially, or the plan's approach has a flaw you identified. Explain what's wrong and propose your alternative.
+     - If every fix gets "Approve" with no substantive difference from your independent approach, that's fine — but the independent approach must be visible in the output so the user can verify you didn't just agree.
   5. Append under `## Review Discussion` in the review file:
      ```markdown
      ### Fix Plan Analysis ({{AI model/tool}} — {{DATE}})
 
      **Issue 1 ({{title}}) — Approve**
-     Fix approach is correct. {{brief reasoning}}
+     My approach: {{what I would have done independently}}
+     Plan's approach: {{summary}}. Aligns with my analysis because {{reason}}.
 
      **Issue 2 ({{title}}) — Revise**
-     The proposed approach is flawed because {{reason}}.
+     My approach: {{what I would have done independently}}
+     Plan's approach is flawed because {{reason}}.
      **Alternative:** {{revised approach}}
      ```
 
