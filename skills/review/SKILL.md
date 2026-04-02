@@ -292,18 +292,19 @@ The fix for Issue 3 broke {{what was broken}}.
 
 **Instructions:**
 1. **Review:** Follow the `review` mode instructions above. Write the full review to the review file.
-2. **Generate fix plan:** For each issue found, propose a fix plan. Append under `## Review Discussion`:
+2. **Generate fix plan:** For each issue found, propose a fix plan. For each fix, include a **risk** — one way it could fail, regress, or need follow-up. Append under `## Review Discussion`:
    ```markdown
    ### Fix Plan ({{AI model/tool}} — {{DATE}})
 
    **Issue 1 ({{title}})**
    - Fix: {{approach}}
+   - Risk: {{one way this fix could fail or introduce a problem}}
    - Files: {{list}}
 
    **Execution order:** {{ordered steps}}
    **Verification:** {{commands to run after fixes}}
    ```
-3. **Validate fix plan via subagent:** Spawn an independent agent (software-architect role) to validate the fix plan. The subagent should ONLY read the review file — not your reasoning chain. Pass it this prompt: "Read {{review_file_path}}. Validate the fix plan in `### Fix Plan`. For each proposed fix, evaluate whether it addresses the root cause, introduces new issues, or is fundamentally flawed. Append your analysis as `### Fix Plan Analysis` under `## Review Discussion`."
+3. **Validate fix plan via subagent:** Spawn an independent agent (software-architect role) to validate the fix plan. The subagent should ONLY read the review file — not your reasoning chain. Pass it this prompt: "Read {{review_file_path}}. First, read ONLY the `### Issues Found` sections and the cited source files. For each issue, design your own fix approach BEFORE reading the `### Fix Plan`. Then read the `### Fix Plan` and compare each proposed fix against your independently designed approach. For each fix, output Approve (approaches align) or Revise (your approach differs materially or the plan is flawed). Show both approaches side-by-side: 'My approach: ...' and 'Plan approach: ...'. Append your analysis as `### Fix Plan Analysis` under `## Review Discussion`."
 4. **STOP.** Tell the user:
    - "Review complete. Fix plan generated and independently validated."
    - "Review the fix plan and analyses in {{review_file_path}}."
