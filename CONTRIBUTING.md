@@ -58,7 +58,6 @@ Each skill lives in `skills/<name>/SKILL.md` — a single file containing YAML f
 
 - Keep SKILL.md focused. The frontmatter defines metadata; the body is the prompt Claude follows.
 - The `description` field in YAML frontmatter is the primary trigger mechanism. Make it "pushy" — include multiple phrasings of when to use it. Claude tends to undertrigger rather than overtrigger.
-- `disable-model-invocation: true` means the skill is user-only (invoked via `/agentic-dev:<name>`). All our phase skills use this since they have side effects.
 - Test the skill by running `claude --plugin-dir .` and invoking it.
 
 ### Example SKILL.md structure
@@ -67,7 +66,6 @@ Each skill lives in `skills/<name>/SKILL.md` — a single file containing YAML f
 ---
 name: research
 description: "Use for Phase 1... Also trigger on 'start research', 'phase 1', etc."
-disable-model-invocation: true
 ---
 
 ## What This Skill Does

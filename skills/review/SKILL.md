@@ -2,7 +2,6 @@
 name: review
 description: "Use for reviewing completed work: code review, spec compliance, fix plan validation, and fix verification. Supports task-level and wave-level scope. Use when someone says 'review wave', 'review task', 'verify fixes', 'check fix plan', 'code review', 'validate fixes', or after execute phase completes."
 argument-hint: "[wave N | task X.Y | fix-plan wave N | fix-plan task X.Y | verify-fixes wave N | verify-fixes task X.Y | full wave N | full task X.Y]"
-disable-model-invocation: true
 ---
 
 ## What This Skill Does

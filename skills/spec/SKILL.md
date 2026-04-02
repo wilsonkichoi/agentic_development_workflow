@@ -1,7 +1,6 @@
 ---
 name: spec
 description: "Use for Phase 2 of the development workflow: specification and architecture. Generates SPEC.md (milestones, architecture, schemas, API contracts, diagrams) and HANDOFF.md from research findings. Use when someone says 'create spec', 'phase 2', 'specification phase', 'architecture design', 'write the spec', or after Phase 1 research is approved."
-disable-model-invocation: true
 ---
 
 ## What This Skill Does

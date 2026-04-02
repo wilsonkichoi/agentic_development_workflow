@@ -2,7 +2,6 @@
 name: init-project
 description: "Use when someone asks to initialize a new project, scaffold a project, set up the development workflow, or create project structure. Also trigger on 'start new project', 'workflow setup', 'project scaffold', or 'init from template'. Even if they just say 'set up a new project', this skill is likely what they want."
 argument-hint: [target-directory]
-disable-model-invocation: true
 ---
 
 ## What This Skill Does

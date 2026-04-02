@@ -1,7 +1,6 @@
 ---
 name: plan
 description: "Use for Phase 3 of the development workflow: task breakdown. Decomposes milestones into atomic tasks grouped into parallel waves with role assignments. Use when someone says 'create plan', 'phase 3', 'task breakdown', 'decompose tasks', 'break down the spec', or after Phase 2 spec is approved."
-disable-model-invocation: true
 ---
 
 ## What This Skill Does

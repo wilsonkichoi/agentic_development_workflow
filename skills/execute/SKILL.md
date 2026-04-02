@@ -2,7 +2,6 @@
 name: execute
 description: "Use for Phase 4 of the development workflow: task execution. Implements one task or an entire wave with role-matched expertise, branch isolation, task review files, and debugging framework. Use when someone says 'execute task', 'phase 4', 'implement next task', 'start execution', 'pick up next task', 'execute wave', or 'run wave N'."
 argument-hint: "[task X.Y | wave N | next]"
-disable-model-invocation: true
 ---
 
 ## What This Skill Does

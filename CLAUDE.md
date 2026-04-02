@@ -29,7 +29,6 @@ Files must work across Claude Code, Copilot CLI, and Gemini CLI. Do not add tool
 ## Skill Authoring
 
 - Skill descriptions must be "pushy" — include multiple trigger phrases (formal name, informal triggers, contextual triggers). AI tools undertrigger by default.
-- All phase skills use `disable-model-invocation: true` (user-invoked only, since they have side effects).
 
 ## Agent Authoring
 

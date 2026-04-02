@@ -1,7 +1,6 @@
 ---
 name: verify
 description: "Use for Phase 5 of the development workflow: verification and retrospective. Runs end-to-end testing for a milestone and generates a retrospective document. Use when someone says 'verify milestone', 'phase 5', 'retrospective', 'run verification', or after all tasks in a milestone are complete."
-disable-model-invocation: true
 ---
 
 ## What This Skill Does

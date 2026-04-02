@@ -1,7 +1,6 @@
 ---
 name: research
 description: "Use for Phase 1 of the development workflow: AI deep research. Ingests human research materials from workflow/research/manual/ and performs web search, codebase analysis, and cross-referencing to produce a comprehensive research synthesis. Use when someone says 'start research', 'phase 1', 'research phase', 'deep research', or has placed materials in workflow/research/manual/."
-disable-model-invocation: true
 ---
 
 ## What This Skill Does
