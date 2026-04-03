@@ -1,7 +1,7 @@
 ---
 name: review
-description: "Use for reviewing completed work: code review, spec compliance, fix plan validation, and fix verification. Supports task-level and wave-level scope. Use when someone says 'review wave', 'review task', 'verify fixes', 'check fix plan', 'code review', 'validate fixes', or after execute phase completes."
-argument-hint: "[wave N | task X.Y | fix-plan wave N | fix-plan task X.Y | verify-fixes wave N | verify-fixes task X.Y | full wave N | full task X.Y]"
+description: "Use for reviewing completed work: code review with fix plan generation, fix plan analysis (second opinion), and fix verification. Supports task-level and wave-level scope. Use when someone says 'review wave', 'review task', 'verify fixes', 'fix plan analysis', 'second opinion on fix plan', 'code review', 'validate fixes', or after execute phase completes."
+argument-hint: "[wave N | task X.Y | fix-plan-analysis wave N | fix-plan-analysis task X.Y | verify-fixes wave N | verify-fixes task X.Y | full wave N | full task X.Y]"
 ---
 
 ## What This Skill Does
@@ -10,10 +10,10 @@ Reviews completed Phase 4 work for code quality, spec compliance, and correctnes
 
 ## Review Modes
 
-- **`review wave N`** / **`review task X.Y`** — Code review, spec compliance, acceptance criteria, severity-ranked issues
-- **`fix-plan wave N`** / **`fix-plan task X.Y`** — Generate a fix plan from review issues, or validate an existing one (append-only — run multiple times with different AIs)
+- **`review wave N`** / **`review task X.Y`** — Code review, spec compliance, acceptance criteria, severity-ranked issues. If issues are found, spawns an independent subagent to generate a fix plan.
+- **`fix-plan-analysis wave N`** / **`fix-plan-analysis task X.Y`** — Validate an existing fix plan (second opinion, blind-first). Append-only — run multiple times with different AIs for additional opinions. Falls back to generating a plan if none exists.
 - **`verify-fixes wave N`** / **`verify-fixes task X.Y`** — Verify actual code changes after fixes were applied
-- **`full wave N`** / **`full task X.Y`** — Single-session orchestration: review + generate fix plan + validate via subagent, then STOP
+- **`full wave N`** / **`full task X.Y`** — Single-session orchestration: review (with fix plan subagent) + fix-plan-analysis (subagent), then STOP
 
 ## State Flow
 
@@ -21,15 +21,16 @@ Each mode writes a known section heading. The next mode checks for it as a preco
 
 ```
 review ──writes──> ## Issues Found + ## Summary
-                        │
-                        ▼ (precondition)
-fix-plan ─┬─(no plan)──writes──> ### Fix Plan (under ## Review Discussion)
-           └─(plan exists)──writes──> ### Fix Plan Analysis (under ## Review Discussion)
-                        │
-                        ▼ (human approves, /agentic-dev:execute applies fixes)
-                        │  execute writes ──> ### Fix Results
-                        │
-                        ▼ (precondition)
+    │
+    ├─(issues found)──subagent writes──> ### Fix Plan (under ## Review Discussion)
+    │
+    ▼ (precondition)
+fix-plan-analysis ──writes──> ### Fix Plan Analysis (under ## Review Discussion)
+    │
+    ▼ (human approves, /agentic-dev:execute applies fixes)
+    │  execute writes ──> ### Fix Results
+    │
+    ▼ (precondition)
 verify-fixes ──writes──> ### Fix Verification (under ## Review Discussion)
 ```
 
@@ -169,15 +170,49 @@ Reviewer: {{AI model/tool}}
     - **Direct merge (solo):** `git checkout main && git merge task/X.Y-short-title && git branch -d task/X.Y-short-title`
     - **Create PR (team):** instruct the execute skill or run `gh pr create`
 
+**If issues found — generate fix plan via independent subagent:**
+
+When the review finds BLOCKERs or SUGGESTIONs, spawn an independent agent (software-architect role) to generate a fix plan. The subagent should ONLY read the review file — not the reviewer's reasoning chain. Pass it this prompt:
+
+"Read {{review_file_path}}. You are generating a fix plan for the issues found in this review.
+
+Phase A — Blind source read (form your own assessment BEFORE reading the review details):
+1. Skim the review for file:line locations and severity levels ONLY. Do NOT read the full issue descriptions or suggested fixes yet.
+2. For each flagged file:line, read the surrounding source code (±30 lines). Write a brief assessment: what the code does, what could go wrong, what you would change.
+
+Phase B — Compare and plan:
+3. Now read the full review issues and suggested fixes. Compare your independent assessment with the review's. Note agreements and disagreements.
+4. Propose a fix for each issue. For each fix, state one risk — a way it could fail or introduce a problem.
+5. Append under `## Review Discussion` in the review file:
+
+### Fix Plan ({{AI model/tool}} — {{DATE}})
+
+For each issue use this format:
+- Independent assessment: {{what you found reading source BEFORE the review}}
+- Review comparison: {{agree/disagree and why}}
+- Fix: {{chosen approach}}
+- Risk: {{one way this fix could fail}}
+- Files: {{list}}
+
+End with: Execution order, Verification commands."
+
+**Fallback (tools without subagent support):** If subagent spawning is not available, generate the fix plan directly following the same Phase A/B structure above. Note in the fix plan header that it was generated in the same context as the review. The user can run `/agentic-dev:review fix-plan-analysis` in a separate session for a truly independent second opinion.
+
+**Post-review messaging (issues found):**
+- "Review complete with N issues (X BLOCKERs, Y SUGGESTIONs, Z NITs). Fix plan generated by independent agent."
+- "To get a second opinion: `/agentic-dev:review fix-plan-analysis wave N`"
+- "To apply fixes: `/agentic-dev:execute fix the issues according to {{review_file_path}}`"
+- "After fixes: `/agentic-dev:review verify-fixes wave N`"
+
 ---
 
-### Mode: `fix-plan wave N` / `fix-plan task X.Y`
+### Mode: `fix-plan-analysis wave N` / `fix-plan-analysis task X.Y`
 
 **Role:** Activate `software-architect` agent.
 
 **Precondition:** Identify the **primary review file** and check it for issues:
-- **`fix-plan wave N`**: The primary source is the **wave review file** (`workflow/plan/reviews/wave-mM-N.md` or `wave-N.md` — see Context Loading step 6 for naming). Check it for `### Issues Found` sections (one per `## Task X.Y` heading in the wave review). If the wave review file does not exist or has no `### Issues Found` sections → STOP and tell the user: "No wave review found — run `/agentic-dev:review wave N` first."
-- **`fix-plan task X.Y`**: The primary source is `workflow/plan/reviews/task-X.Y.md`. Check for `### Issues Found` (under `## Code Review`). If not found → STOP and tell the user: "No task review found — run `/agentic-dev:review task X.Y` first."
+- **`fix-plan-analysis wave N`**: The primary source is the **wave review file** (`workflow/plan/reviews/wave-mM-N.md` or `wave-N.md` — see Context Loading step 6 for naming). Check it for `### Issues Found` sections (one per `## Task X.Y` heading in the wave review). If the wave review file does not exist or has no `### Issues Found` sections → STOP and tell the user: "No wave review found — run `/agentic-dev:review wave N` first."
+- **`fix-plan-analysis task X.Y`**: The primary source is `workflow/plan/reviews/task-X.Y.md`. Check for `### Issues Found` (under `## Code Review`). If not found → STOP and tell the user: "No task review found — run `/agentic-dev:review task X.Y` first."
 
 The wave review file is the authoritative source for wave-scoped issues. Task review files (`task-X.Y.md`) provide supplementary context — key decisions, obstacles, implementation details that the wave review may summarize. Read both, but look for `### Issues Found` in the wave review file, not in task files.
 
@@ -207,7 +242,7 @@ The wave review file is the authoritative source for wave-scoped issues. Task re
      **Execution order:** {{ordered steps}}
      **Verification:** {{commands to run after fixes}}
      ```
-  7. Tell the user: "Fix plan generated. Review it in {{review_file_path}}. To validate with an independent perspective, run `fix-plan` again (optionally with a different AI). To apply fixes: `/agentic-dev:execute fix the issues according to {{review_file_path}}`"
+  7. Tell the user: "Fix plan generated. Review it in {{review_file_path}}. To get a second opinion, run `/agentic-dev:review fix-plan-analysis` (optionally with a different AI). To apply fixes: `/agentic-dev:execute fix the issues according to {{review_file_path}}`"
 
 - **If `### Fix Plan` found → Validate it:**
 
@@ -235,7 +270,7 @@ The wave review file is the authoritative source for wave-scoped issues. Task re
      **Alternative:** {{revised approach}}
      ```
 
-**Append-only:** Multiple AIs can run `fix-plan`. Each appends its own entry. Results accumulate. The user or execute AI synthesizes the feedback.
+**Append-only:** Multiple AIs can run `fix-plan-analysis`. Each appends its own entry. Results accumulate. The user or execute AI synthesizes the feedback.
 
 ---
 
@@ -288,28 +323,17 @@ The fix for Issue 3 broke {{what was broken}}.
 
 ### Mode: `full wave N` / `full task X.Y`
 
-**Role:** Start as `code-reviewer`, then use subagents for independent validation.
+**Role:** Start as `code-reviewer`, then use subagents for independent fix plan and analysis.
 
 **Instructions:**
-1. **Review:** Follow the `review` mode instructions above. Write the full review to the review file.
-2. **Generate fix plan:** For each issue found, propose a fix plan. For each fix, include a **risk** — one way it could fail, regress, or need follow-up. Append under `## Review Discussion`:
-   ```markdown
-   ### Fix Plan ({{AI model/tool}} — {{DATE}})
-
-   **Issue 1 ({{title}})**
-   - Fix: {{approach}}
-   - Risk: {{one way this fix could fail or introduce a problem}}
-   - Files: {{list}}
-
-   **Execution order:** {{ordered steps}}
-   **Verification:** {{commands to run after fixes}}
-   ```
-3. **Validate fix plan via subagent:** Spawn an independent agent (software-architect role) to validate the fix plan. The subagent should ONLY read the review file — not your reasoning chain. Pass it this prompt: "Read {{review_file_path}}. First, read ONLY the `### Issues Found` sections and the cited source files. For each issue, design your own fix approach BEFORE reading the `### Fix Plan`. Then read the `### Fix Plan` and compare each proposed fix against your independently designed approach. For each fix, output Approve (approaches align) or Revise (your approach differs materially or the plan is flawed). Show both approaches side-by-side: 'My approach: ...' and 'Plan approach: ...'. Append your analysis as `### Fix Plan Analysis` under `## Review Discussion`."
-4. **STOP.** Tell the user:
-   - "Review complete. Fix plan generated and independently validated."
-   - "Review the fix plan and analyses in {{review_file_path}}."
+1. **Review:** Follow the `review` mode instructions above. Write the full review to the review file. This includes spawning a subagent to generate the fix plan (as defined in the review mode's "If issues found" section).
+2. **Fix plan analysis via subagent:** Spawn another independent agent (software-architect role) to validate the fix plan. The subagent should ONLY read the review file — not the reviewer's or fix plan agent's reasoning chain. Pass it this prompt: "Read {{review_file_path}}. First, read ONLY the `### Issues Found` sections and the cited source files. For each issue, design your own fix approach BEFORE reading the `### Fix Plan`. Then read the `### Fix Plan` and compare each proposed fix against your independently designed approach. For each fix, output Approve (approaches align) or Revise (your approach differs materially or the plan is flawed). Show both approaches side-by-side: 'My approach: ...' and 'Plan approach: ...'. Append your analysis as `### Fix Plan Analysis` under `## Review Discussion`."
+3. **STOP.** Tell the user:
+   - "Review complete. Fix plan generated and independently analyzed."
+   - "Review the fix plan and analysis in {{review_file_path}}."
    - "To apply fixes: `/agentic-dev:execute fix the issues according to {{review_file_path}}`"
    - "After fixes: `/agentic-dev:review verify-fixes wave N`"
+   - "For additional opinions: `/agentic-dev:review fix-plan-analysis wave N`"
 
 Do NOT execute fixes. Do NOT proceed past this point.
 

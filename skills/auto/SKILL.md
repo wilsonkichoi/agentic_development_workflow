@@ -42,7 +42,7 @@ Read the wave review file. Check each `## Task X.Y` section for `### Issues Foun
 - Issues exist → continue checking.
 
 **4. Does `### Fix Plan` exist in the wave review?**
-No → start at Step 3 (fix-plan).
+No → start at Step 3 (fix-plan-analysis).
 
 **5. Does `### Fix Results` exist in the wave review?**
 No → start at Step 4 (execute fixes).
@@ -83,21 +83,21 @@ Spawn an independent agent with this prompt:
 
 **Post-check:** Read the wave review file. If it exists and has `### Issues Found` sections:
 - Count BLOCKERs and SUGGESTIONs across all tasks. If zero → **short-circuit to Step 6**.
-- If issues exist → continue to Step 3.
+- If issues exist → verify `### Fix Plan` was also generated (the review mode now spawns a subagent to generate it). If fix plan is missing, continue to Step 3 which will generate one as fallback. If fix plan exists → continue to Step 3 for analysis.
 
 ---
 
-**Step 3 — Fix Plan**
+**Step 3 — Fix Plan Analysis**
 
 Spawn an independent agent with this prompt:
 
-> You are running the fix-plan step of an automated pipeline for milestone M, wave W.
-> Invoke `/agentic-dev:review fix-plan wave W`.
-> Follow the skill's instructions completely. Generate a fix plan for issues in `workflow/plan/reviews/wave-mM-N.md`.
-> OVERRIDE: Do not stop for human review or approval. Complete the fix plan.
-> When done, confirm the fix plan was written.
+> You are running the fix-plan-analysis step of an automated pipeline for milestone M, wave W.
+> Invoke `/agentic-dev:review fix-plan-analysis wave W`.
+> Follow the skill's instructions completely. Analyze the fix plan in `workflow/plan/reviews/wave-mM-N.md`.
+> OVERRIDE: Do not stop for human review or approval. Complete the analysis.
+> When done, confirm the analysis was written.
 
-**Post-check:** Read the wave review file. Verify `### Fix Plan` exists under `## Review Discussion`. If missing, **STOP and report**.
+**Post-check:** Read the wave review file. Verify `### Fix Plan Analysis` exists under `## Review Discussion`. If missing, **STOP and report**.
 
 ---
 
