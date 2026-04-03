@@ -24,6 +24,8 @@ Branch naming: `feature/m{{M}}-wave{{W}}-{{short-description}}` (e.g., `feature/
 
 Check task dependencies within the wave (each task block has a `Depends on:` field). Run independent tasks (no intra-wave dependencies) in parallel using worktree isolation (`isolation: "worktree"`). Tasks that depend on other tasks in the same wave must wait for their dependency to finish. Each task gets its own branch (`task/X.Y-short-title`) **created from the feature branch**. Complete the full cycle (branch → implement → verify → review file → progress update) for each task.
 
+**Worktree creation is not concurrency-safe.** Git locks `.git/config` during `git worktree add`, so launching multiple worktree agents simultaneously will cause lock failures. Stagger worktree creation: launch agents one at a time (separate sequential messages), waiting for each agent's worktree to be set up before launching the next. The agents still execute in parallel once their worktrees exist — only the setup is serialized.
+
 **Wave branch lifecycle (sequential tasks in the same session):**
 
 1. After completing a task, **commit all changes** on the task branch before moving on.
@@ -159,7 +161,7 @@ If the user directs you to fix issues from a review file (e.g., `wave-mM-N.md` o
    git checkout feature/m{{M}}-wave{{W}}-{{short-description}}
    git checkout -b fix/{{X.Y}}-{{issue-title}}
    ```
-   If running multiple fix tasks in parallel, use worktree isolation branching from the feature branch. If no feature branch exists (single-task fix), branch from `main`.
+   If running multiple fix tasks in parallel, use worktree isolation branching from the feature branch (stagger worktree creation — see note above). If no feature branch exists (single-task fix), branch from `main`.
 4. Implement all approved fixes. Run verification commands (lint, type check, tests, acceptance criteria).
 5. Append `### Fix Results` under `## Review Discussion` in the review file:
 
