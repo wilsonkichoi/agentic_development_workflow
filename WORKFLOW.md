@@ -23,9 +23,10 @@ A structured, 5-phase framework for building software with AI coding agents (Cla
 /agentic-dev:execute        # Phase 4
 /agentic-dev:review         # Review loop (between Phase 4 and 5)
 /agentic-dev:verify         # Phase 5
+/agentic-dev:auto           # Full pipeline automation
 ```
 
-The plugin includes 7 skills (init + 5 phases + review) and 13 role-based agents. Agents appear in `/agents` — use them for role-matched execution in Phase 4.
+The plugin includes 8 skills (init + 5 phases + review + auto) and 13 role-based agents. Agents appear in `/agents` — use them for role-matched execution in Phase 4.
 
 ### Copilot CLI
 
@@ -202,12 +203,11 @@ Role definitions are available as agents — see `/agents` when using the plugin
 8. **Update progress:** Mark the task checkbox as `[x]` in PLAN.md. Set task status to `review` in PROGRESS.md. Note any issues.
 9. **Review loop (after task/wave completion, before PR):**
    Use `/agentic-dev:review` to run an independent code review and spec compliance check. The review file (`wave-mM-N.md` or `task-X.Y.md`) is the single source of truth — any AI session in any tool can read it and continue the loop.
-   - `a.` `/agentic-dev:review wave N` (or `task X.Y`) — independent code review, produces review file with severity-ranked issues.
-   - `b.` `/agentic-dev:review fix-plan wave N` — generate fix plan from review issues.
-   - `c.` `/agentic-dev:review fix-plan wave N` (optional, different AI) — validate existing fix plan. Run multiple times with different AIs; results accumulate.
-   - `d.` `/agentic-dev:execute` — apply approved fixes, appends `### Fix Results` to the review file.
-   - `e.` `/agentic-dev:review verify-fixes wave N` — verify fixes were applied correctly.
-   - Alternatively, use `/agentic-dev:review full wave N` to run steps a-c in one session using subagents for independent validation.
+   - `a.` `/agentic-dev:review wave N` (or `task X.Y`) — independent code review, produces review file with severity-ranked issues. If issues are found, automatically spawns a subagent to generate a fix plan.
+   - `b.` `/agentic-dev:review fix-plan-analysis wave N` — validate the existing fix plan (second opinion, blind-first). Run multiple times with different AIs; results accumulate. Falls back to generating a plan if none exists.
+   - `c.` `/agentic-dev:execute` — apply approved fixes, appends `### Fix Results` to the review file.
+   - `d.` `/agentic-dev:review verify-fixes wave N` — verify fixes were applied correctly.
+   - Alternatively, use `/agentic-dev:review full wave N` to run steps a-b in one session using subagents for independent validation.
    - Human reviews the results at each step. If changes needed: human adds `*FEEDBACK:*` comments. Discussion is append-only.
    - If satisfactory (no issues, or all fixes verified): review skill marks task `done` in PROGRESS.md and signals merge/PR readiness.
 10. **Merge / Create PR (human-gated, two-stage for waves):**

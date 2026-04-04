@@ -13,7 +13,7 @@ Changes to skills, agents, or workflow docs must preserve these invariants (from
 
 ## Version Bumping
 
-When modifying skills, agents, or workflow behavior, bump the `version` field in **all three** manifest files. They must stay in sync. Use semver: patch for fixes, minor for features, major for breaking changes.
+Do NOT bump versions automatically. Only bump when explicitly asked (e.g., "bump version", "prepare release"). When bumping, update **all three** manifest files — they must stay in sync:
 
 - `.claude-plugin/plugin.json` — Claude Code
 - `plugin.json` (root) — Copilot CLI

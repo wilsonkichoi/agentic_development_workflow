@@ -69,7 +69,7 @@ copilot plugin install wilsonkichoi/agentic_development_workflow
 ```
 
 After installation:
-- Skills are available as `/research`, `/spec`, `/plan`, `/execute`, `/review`, `/verify`
+- Skills are available as `/init-project`, `/research`, `/spec`, `/plan`, `/execute`, `/review`, `/verify`, `/auto`
 - Agents appear in `/agent` (e.g., `backend-engineer`, `qa-engineer`)
 - Plugins install globally to `~/.copilot/state/installed-plugins/`
 
@@ -139,57 +139,6 @@ gemini extensions list
 # Uninstall
 gemini extensions uninstall agentic-development-workflow
 ```
-
-### Migrating from 1.x to 2.0.0
-
-v2.0.0 removes the `templates/` directory. Phase prompts are now inline in each skill's `SKILL.md`, and role definitions live in `agents/` as the single source of truth.
-
-**What changed:**
-
-| 1.x | 2.0.0 |
-|-----|-------|
-| `templates/phases/*.md` | Merged into `skills/*/SKILL.md` |
-| `templates/roles/*.md` | Replaced by `agents/*.agent.md` |
-| `skills/*/template.md` | Merged into `skills/*/SKILL.md` |
-
-**Step 1 — Update the plugin:**
-
-```bash
-# Claude Code
-/plugin marketplace update wilsonkichoi-agentic-dev
-
-# Copilot CLI
-copilot plugin update agentic-dev
-
-```
-
-**Step 2 — Clean up existing projects:**
-
-Remove the legacy `templates/` directory from any project that was initialized with 1.x:
-
-```bash
-# From your project root
-rm -rf templates/
-```
-
-**Step 3 — Update your project instruction file:**
-
-If your project's `CLAUDE.md` references `templates/`, update those references:
-
-- Phase prompts: replace `templates/phases/01-research.md` → `/agentic-dev:research` (or read `skills/research/SKILL.md` directly)
-- Role definitions: replace `templates/roles/backend-engineer.md` → `agents/backend-engineer.agent.md` (or use `/agents` in the plugin)
-
-**Step 4 — Verify:**
-
-```bash
-# templates/ should not exist in your project
-ls templates/ 2>&1  # Expected: "No such file or directory"
-
-# No stale references in your project instruction file
-grep "templates/" CLAUDE.md  # Expected: no output
-```
-
-After updating, start a new session (`/clear` or new terminal) to pick up the new skill files.
 
 ## Usage
 

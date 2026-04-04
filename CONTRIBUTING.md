@@ -161,7 +161,7 @@ make test
 # 2. Load plugin and verify components
 claude --plugin-dir .
 # Then in the session:
-#   /skills   → confirm all 7 skills appear
+#   /skills   → confirm all 8 skills appear
 #   /agents   → confirm all 13 agents appear
 
 # 3. Test skill invocations (spot check at minimum)
