@@ -99,7 +99,9 @@ Cross-referenced: SPEC.md §{{sections}}, HANDOFF.md
 
 ### Issues Found
 
-**Issue 1 — SEVERITY: {{title}}**
+Assign each issue a stable ID: `[B1]`, `[B2]`... for BLOCKERs, `[S1]`, `[S2]`... for SUGGESTIONs, `[N1]`, `[N2]`... for NITs. Number sequentially across all tasks in the wave (not per-task). All fix lifecycle sections reference these IDs.
+
+**[B1] — BLOCKER: {{title}}**
 
 `{{file:line}}` — {{description}}
 
@@ -116,8 +118,8 @@ Cross-referenced: SPEC.md §{{sections}}, HANDOFF.md
 
 ## Summary
 
-| # | Severity | Task | Issue | Action |
-|---|----------|------|-------|--------|
+| ID | Severity | Task | Issue | Action |
+|----|----------|------|-------|--------|
 
 **Overall verdict:** {{1-2 sentence assessment}}
 
@@ -144,14 +146,14 @@ Reviewer: {{AI model/tool}}
 
 ### Issues Found
 
-**Issue 1 — SEVERITY: {{title}}**
+**[B1] — BLOCKER: {{title}}**
 
 `{{file:line}}` — {{description}}
 
 ### Summary
 
-| # | Severity | Issue | Action |
-|---|----------|-------|--------|
+| ID | Severity | Issue | Action |
+|----|----------|-------|--------|
 
 ### Review Discussion
 
@@ -187,7 +189,11 @@ Phase B — Compare and plan:
 
 ### Fix Plan ({{AI model/tool}} — {{DATE}})
 
-For each issue use this format:
+**Scope: {{N}} issues ({{X}} BLOCKERs, {{Y}} SUGGESTIONs)**
+
+For each issue, reference its ID from ### Issues Found:
+
+**[B1] ({{title}})**
 - Independent assessment: {{what you found reading source BEFORE the review}}
 - Review comparison: {{agree/disagree and why}}
 - Fix: {{chosen approach}}
@@ -232,7 +238,9 @@ The wave review file is the authoritative source for wave-scoped issues. Task re
      ```markdown
      ### Fix Plan ({{AI model/tool}} — {{DATE}})
 
-     **Issue 1 ({{title}})**
+     **Scope: {{N}} issues ({{X}} BLOCKERs, {{Y}} SUGGESTIONs)**
+
+     **[B1] ({{title}})**
      - Independent assessment: {{what you found reading the source BEFORE the review — your own characterization}}
      - Review comparison: {{agree/disagree with review's characterization and why}}
      - Fix: {{chosen approach}}
@@ -260,11 +268,11 @@ The wave review file is the authoritative source for wave-scoped issues. Task re
      ```markdown
      ### Fix Plan Analysis ({{AI model/tool}} — {{DATE}})
 
-     **Issue 1 ({{title}}) — Approve**
+     **[B1] ({{title}}) — Approve**
      My approach: {{what I would have done independently}}
      Plan's approach: {{summary}}. Aligns with my analysis because {{reason}}.
 
-     **Issue 2 ({{title}}) — Revise**
+     **[S1] ({{title}}) — Revise**
      My approach: {{what I would have done independently}}
      Plan's approach is flawed because {{reason}}.
      **Alternative:** {{revised approach}}
@@ -292,14 +300,16 @@ The wave review file is the authoritative source for wave-scoped issues. Task re
 ```markdown
 ### Fix Verification ({{AI model/tool}} — {{DATE}})
 
-**Issue 1 ({{title}}) — Fixed** ✓
+**Status: {{N_fixed}}/{{N_total}} fixed, {{N_not_fixed}} not fixed, {{N_regression}} regressions**
+
+**[B1] ({{title}}) — Fixed** ✓
 Verified: {{what was checked, evidence}}
 
-**Issue 2 ({{title}}) — Not Fixed**
+**[S1] ({{title}}) — Not Fixed**
 The fix was applied but {{problem description}}.
 
-**Issue 3 ({{title}}) — Regression**
-The fix for Issue 3 broke {{what was broken}}.
+**[S2] ({{title}}) — Regression**
+The fix for [S2] broke {{what was broken}}.
 
 **Verification commands:**
 - `{{command}}` — PASS/FAIL

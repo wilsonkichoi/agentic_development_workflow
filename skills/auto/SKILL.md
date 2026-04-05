@@ -55,17 +55,33 @@ Yes → read it. If all issues are marked "Fixed" → go to Step 6 (merge). If a
 
 Run steps sequentially. After each step, verify the expected artifact exists before proceeding.
 
+**Agent prompt principle:** Every subagent prompt below invokes a skill (`/agentic-dev:execute`, `/agentic-dev:review`). The skills contain all necessary templates, output formats, and instructions. Keep agent prompts minimal — state the context (milestone, wave, task) and invoke the skill. Do NOT rewrite or paraphrase skill instructions in the agent prompt. Custom prompts cause agents to miss critical templates (task review file format, fix result format, etc.).
+
 ---
 
 **Step 1 — Execute Wave**
 
-Spawn an independent agent with this prompt:
+Read the wave's task list from PLAN.md. Check the `Depends on:` field for each task. Classify tasks as **independent** (no intra-wave dependencies) or **dependent** (depends on another task in this wave).
+
+**If the wave has 1 task OR all tasks form a dependency chain:** spawn a single agent:
 
 > You are running the execute step of an automated pipeline for milestone M, wave W.
 > Invoke `/agentic-dev:execute wave W`.
 > Follow the skill's instructions completely. Execute all tasks in the wave.
 > OVERRIDE: Do not stop for human review or approval. Complete all tasks and their task review files.
 > When done, confirm which tasks were executed and their status.
+
+**If the wave has multiple independent tasks:** launch one agent per independent task, all in a single message using `isolation: "worktree"` and `run_in_background: true`. Do NOT wait for each agent to complete before launching the next — that defeats parallelism. Tasks that depend on other tasks in the wave must wait for their dependency to complete first.
+
+Per-task agent template:
+
+> You are running the execute step of an automated pipeline for milestone M, task X.Y.
+> Invoke `/agentic-dev:execute task X.Y`.
+> Follow the skill's instructions completely. The feature branch is `feature/mM-waveW-short-description`.
+> OVERRIDE: Do not stop for human review or approval. Complete the task and its task review file.
+> When done, confirm what was implemented and the task status.
+
+Wait for all task agents to complete. Then merge each task branch into the feature branch (in dependency order if any exist) before proceeding to Step 2.
 
 **Post-check:** Verify `workflow/plan/reviews/task-X.Y.md` exists for each task in the wave. Verify PROGRESS.md shows those tasks at status `review`. If any task review is missing, **STOP and report**.
 

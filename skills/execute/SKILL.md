@@ -24,7 +24,7 @@ Branch naming: `feature/m{{M}}-wave{{W}}-{{short-description}}` (e.g., `feature/
 
 Check task dependencies within the wave (each task block has a `Depends on:` field). Run independent tasks (no intra-wave dependencies) in parallel using worktree isolation (`isolation: "worktree"`). Tasks that depend on other tasks in the same wave must wait for their dependency to finish. Each task gets its own branch (`task/X.Y-short-title`) **created from the feature branch**. Complete the full cycle (branch → implement → verify → review file → progress update) for each task.
 
-**Worktree creation is not concurrency-safe.** Git locks `.git/config` during `git worktree add`, so launching multiple worktree agents simultaneously will cause lock failures. Stagger worktree creation: launch agents one at a time (separate sequential messages), waiting for each agent's worktree to be set up before launching the next. The agents still execute in parallel once their worktrees exist — only the setup is serialized.
+**Parallel task launch:** Launch all independent task agents in a single message, each with `isolation: "worktree"`. Git may briefly lock `.git/config` during worktree creation — agents that hit a lock will retry automatically. Do NOT launch agents one at a time and wait for each to complete before launching the next — that eliminates parallelism entirely.
 
 **Wave branch lifecycle (sequential tasks in the same session):**
 
@@ -161,7 +161,7 @@ If the user directs you to fix issues from a review file (e.g., `wave-mM-N.md` o
    git checkout feature/m{{M}}-wave{{W}}-{{short-description}}
    git checkout -b fix/{{X.Y}}-{{issue-title}}
    ```
-   If running multiple fix tasks in parallel, use worktree isolation branching from the feature branch (stagger worktree creation — see note above). If no feature branch exists (single-task fix), branch from `main`.
+   If running multiple fix tasks in parallel, use worktree isolation branching from the feature branch (use parallel launch — see note above). If no feature branch exists (single-task fix), branch from `main`.
 4. Implement all approved fixes. Run verification commands (lint, type check, tests, acceptance criteria).
 5. Append `### Fix Results` under `## Review Discussion` in the review file:
 
@@ -169,12 +169,13 @@ If the user directs you to fix issues from a review file (e.g., `wave-mM-N.md` o
    ### Fix Results ({{AI model/tool}} — {{DATE}})
 
    **Branch:** `{{fix branch name}}` (based on `{{parent branch — feature branch or main}}`)
+   **Status: {{N_fixed}}/{{N_total}} fixed, {{N_deferred}} deferred**
 
-   **Issue N ({{title}}) — Fixed**
+   **[B1] ({{title}}) — Fixed**
    - What was changed: {{1-2 sentences}}
    - Files modified: {{list}}
 
-   **Issue N ({{title}}) — Deferred**
+   **[S1] ({{title}}) — Deferred**
    - Reason: {{why it cannot be applied now}}
 
    **Verification:**
