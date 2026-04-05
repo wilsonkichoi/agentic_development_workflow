@@ -71,7 +71,7 @@ Read the wave's task list from PLAN.md. Check the `Depends on:` field for each t
 > OVERRIDE: Do not stop for human review or approval. Complete all tasks and their task review files.
 > When done, confirm which tasks were executed and their status.
 
-**If the wave has multiple independent tasks:** launch one agent per independent task, all in a single message using `isolation: "worktree"` and `run_in_background: true`. Do NOT wait for each agent to complete before launching the next — that defeats parallelism. Tasks that depend on other tasks in the wave must wait for their dependency to complete first.
+**If the wave has multiple independent tasks:** launch one agent per independent task. Send each agent in a **separate sequential message** with `isolation: "worktree"` and `run_in_background: true`. This staggers worktree creation to avoid git config lock contention. All agents run concurrently once launched — only the launch is serialized. Do NOT wait for each agent to fully complete before launching the next — that eliminates parallelism. Tasks that depend on other tasks in the wave must wait for their dependency to complete first.
 
 Per-task agent template:
 

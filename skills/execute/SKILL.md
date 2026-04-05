@@ -24,7 +24,7 @@ Branch naming: `feature/m{{M}}-wave{{W}}-{{short-description}}` (e.g., `feature/
 
 Check task dependencies within the wave (each task block has a `Depends on:` field). Run independent tasks (no intra-wave dependencies) in parallel using worktree isolation (`isolation: "worktree"`). Tasks that depend on other tasks in the same wave must wait for their dependency to finish. Each task gets its own branch (`task/X.Y-short-title`) **created from the feature branch**. Complete the full cycle (branch → implement → verify → review file → progress update) for each task.
 
-**Parallel task launch:** Launch all independent task agents in a single message, each with `isolation: "worktree"`. Git may briefly lock `.git/config` during worktree creation — agents that hit a lock will retry automatically. Do NOT launch agents one at a time and wait for each to complete before launching the next — that eliminates parallelism entirely.
+**Parallel task launch:** Git locks `.git/config` briefly during `git worktree add`. Launching all worktree agents in a single message causes lock contention — most will fail. Instead, launch each independent task agent as a **background agent in a separate sequential message** (one agent per message, each with `isolation: "worktree"` and `run_in_background: true`). The natural processing delay between messages (~2-5s) is enough for git to release the lock. All agents run concurrently once launched — only the launch is serialized. Do NOT wait for each agent to fully complete before launching the next — that eliminates parallelism.
 
 **Wave branch lifecycle (sequential tasks in the same session):**
 
