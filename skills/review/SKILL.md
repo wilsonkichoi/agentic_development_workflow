@@ -1,7 +1,7 @@
 ---
 name: review
-description: "Use for reviewing completed work: code review with fix plan generation, fix plan analysis (second opinion), and fix verification. Supports task-level and wave-level scope. Use when someone says 'review wave', 'review task', 'verify fixes', 'fix plan analysis', 'second opinion on fix plan', 'code review', 'validate fixes', or after execute phase completes."
-argument-hint: "[wave N | task X.Y | fix-plan-analysis wave N | fix-plan-analysis task X.Y | verify-fixes wave N | verify-fixes task X.Y | full wave N | full task X.Y]"
+description: "Use for reviewing completed work: code review with fix plan generation, security review (STRIDE/OWASP), fix plan analysis (second opinion), and fix verification. Supports task-level and wave-level scope. Use when someone says 'review wave', 'review task', 'security review', 'threat model', 'verify fixes', 'fix plan analysis', 'second opinion on fix plan', 'code review', 'validate fixes', or after execute phase completes."
+argument-hint: "[wave N | task X.Y | security wave N | security task X.Y | fix-plan-analysis wave N | fix-plan-analysis task X.Y | verify-fixes wave N | verify-fixes task X.Y | full wave N | full task X.Y]"
 ---
 
 ## What This Skill Does
@@ -11,6 +11,7 @@ Reviews completed Phase 4 work for code quality, spec compliance, and correctnes
 ## Review Modes
 
 - **`review wave N`** / **`review task X.Y`** — Code review, spec compliance, acceptance criteria, severity-ranked issues. If issues are found, spawns an independent subagent to generate a fix plan.
+- **`security wave N`** / **`security task X.Y`** — Focused security review using threat modeling (STRIDE), OWASP/CWE checks, auth flow verification, and data classification. Appends `## Security Review` to the review file using the same issue ID system (continuing from code review IDs).
 - **`fix-plan-analysis wave N`** / **`fix-plan-analysis task X.Y`** — Validate an existing fix plan (second opinion, blind-first). Append-only — run multiple times with different AIs for additional opinions. Falls back to generating a plan if none exists.
 - **`verify-fixes wave N`** / **`verify-fixes task X.Y`** — Verify actual code changes after fixes were applied
 - **`full wave N`** / **`full task X.Y`** — Single-session orchestration: review (with fix plan subagent) + fix-plan-analysis (subagent), then STOP
@@ -24,9 +25,12 @@ review ──writes──> ## Issues Found + ## Summary
     │
     ├─(issues found)──subagent writes──> ### Fix Plan (under ## Review Discussion)
     │
-    ▼ (precondition)
-fix-plan-analysis ──writes──> ### Fix Plan Analysis (under ## Review Discussion)
+    ▼
+security ──writes──> ## Security Review (with ### Issues Found continuing IDs from code review)
     │
+    ▼ (precondition: ## Summary exists)
+fix-plan-analysis ──writes──> ### Fix Plan Analysis (under ## Review Discussion)
+    │                          (covers issues from BOTH code review and security review)
     ▼ (human approves, /agentic-dev:execute applies fixes)
     │  execute writes ──> ### Fix Results
     │
@@ -212,12 +216,91 @@ End with: Execution order, Verification commands."
 
 ---
 
+### Mode: `security wave N` / `security task X.Y`
+
+**Role:** Activate `security-reviewer` agent.
+
+**Precondition:** The wave review file must exist (code review completed first). If `workflow/plan/reviews/wave-mM-N.md` does not exist → STOP and tell the user: "No wave review found — run `/agentic-dev:review wave N` first."
+
+**Instructions:**
+1. Read the wave review file, all task review files, SPEC.md, and HANDOFF.md for context.
+2. Read the actual source code files listed in each task's "Files created/modified".
+3. Apply STRIDE threat model to each task's implementation:
+   - **S**poofing — can identities be faked?
+   - **T**ampering — can data be modified without detection?
+   - **R**epudiation — can actions be denied?
+   - **I**nformation Disclosure — can data leak?
+   - **D**enial of Service — can service be disrupted?
+   - **E**levation of Privilege — can access be escalated?
+4. Check for OWASP Top 10 and CWE Top 25 vulnerability patterns.
+5. Verify auth/authz on every API endpoint and protected operation.
+6. Check data flows for sensitive information (PII, tokens, credentials in logs/responses).
+7. Check error responses don't leak internal state.
+8. Check input validation at system boundaries.
+9. Produce severity-ranked issues using the same ID system as the code review. **Read the code review's `## Summary` table to find the last assigned IDs, then continue numbering from there** (e.g., if code review ended at [B2] and [S3], security review starts at [B3] and [S4]).
+
+**Output:** Append `## Security Review` section to the wave/task review file. This is a **peer-level section** (same level as `## Task X.Y` sections), NOT under `## Review Discussion`.
+
+**Wave security review format:**
+```markdown
+## Security Review
+
+Reviewed: {{DATE}}
+Reviewer: {{AI model/tool}} (security-reviewer)
+Methodology: STRIDE threat model, OWASP Top 10, CWE Top 25
+
+### Threat Model Summary
+
+| Component | Threats Assessed | Findings |
+|-----------|-----------------|----------|
+
+### Issues Found
+
+**[B3] — BLOCKER: {{title}}**
+
+`{{file:line}}` — {{description}}
+
+{{STRIDE category, OWASP/CWE reference, why it matters, suggested fix}}
+
+### Security Assessment
+
+**Overall security posture:** {{1-2 sentence assessment}}
+```
+
+**Task security review format (appended to task-X.Y.md):**
+```markdown
+## Security Review
+
+Reviewed: {{DATE}}
+Reviewer: {{AI model/tool}} (security-reviewer)
+Methodology: STRIDE, OWASP Top 10, CWE Top 25
+
+### Issues Found
+
+**[B1] — BLOCKER: {{title}}**
+
+`{{file:line}}` — {{description}}
+
+### Security Assessment
+
+**Overall security posture:** {{1-2 sentence assessment}}
+```
+
+**If no security issues found:** Write the `## Security Review` section with "No security issues found" and a brief note on what was assessed (components reviewed, threat categories checked).
+
+**Post-review messaging:**
+- "Security review complete with N issues (X BLOCKERs, Y SUGGESTIONs). Findings appended to {{review_file_path}}."
+- "Security review complete — no issues found. {{N}} components assessed against STRIDE/OWASP/CWE."
+- If issues were found and no fix plan exists yet: "Run `/agentic-dev:review fix-plan-analysis wave N` to generate a fix plan covering both code review and security review findings."
+
+---
+
 ### Mode: `fix-plan-analysis wave N` / `fix-plan-analysis task X.Y`
 
 **Role:** Activate `software-architect` agent.
 
 **Precondition:** Identify the **primary review file** and check it for issues:
-- **`fix-plan-analysis wave N`**: The primary source is the **wave review file** (`workflow/plan/reviews/wave-mM-N.md` or `wave-N.md` — see Context Loading step 6 for naming). Check it for `### Issues Found` sections (one per `## Task X.Y` heading in the wave review). If the wave review file does not exist or has no `### Issues Found` sections → STOP and tell the user: "No wave review found — run `/agentic-dev:review wave N` first."
+- **`fix-plan-analysis wave N`**: The primary source is the **wave review file** (`workflow/plan/reviews/wave-mM-N.md` or `wave-N.md` — see Context Loading step 6 for naming). Check it for `### Issues Found` sections under BOTH `## Task X.Y` headings (code review) AND `## Security Review` (security review). The fix plan must cover issues from both reviews. If the wave review file does not exist or has no `### Issues Found` sections → STOP and tell the user: "No wave review found — run `/agentic-dev:review wave N` first."
 - **`fix-plan-analysis task X.Y`**: The primary source is `workflow/plan/reviews/task-X.Y.md`. Check for `### Issues Found` (under `## Code Review`). If not found → STOP and tell the user: "No task review found — run `/agentic-dev:review task X.Y` first."
 
 The wave review file is the authoritative source for wave-scoped issues. Task review files (`task-X.Y.md`) provide supplementary context — key decisions, obstacles, implementation details that the wave review may summarize. Read both, but look for `### Issues Found` in the wave review file, not in task files.
@@ -337,8 +420,9 @@ The fix for [S2] broke {{what was broken}}.
 
 **Instructions:**
 1. **Review:** Follow the `review` mode instructions above. Write the full review to the review file. This includes spawning a subagent to generate the fix plan (as defined in the review mode's "If issues found" section).
-2. **Fix plan analysis via subagent:** Spawn another independent agent (software-architect role) to validate the fix plan. The subagent should ONLY read the review file — not the reviewer's or fix plan agent's reasoning chain. Pass it this prompt: "Read {{review_file_path}}. First, read ONLY the `### Issues Found` sections and the cited source files. For each issue, design your own fix approach BEFORE reading the `### Fix Plan`. Then read the `### Fix Plan` and compare each proposed fix against your independently designed approach. For each fix, output Approve (approaches align) or Revise (your approach differs materially or the plan is flawed). Show both approaches side-by-side: 'My approach: ...' and 'Plan approach: ...'. Append your analysis as `### Fix Plan Analysis` under `## Review Discussion`."
-3. **STOP.** Tell the user:
+2. **Security review via subagent:** Spawn an independent agent (security-reviewer role) to perform a security review. The subagent should ONLY read the review file and source code — not the code reviewer's reasoning chain. Pass it this prompt: "Read {{review_file_path}}. Invoke `/agentic-dev:review security wave N`. Follow the skill's instructions completely. Append your findings as `## Security Review` to the review file."
+3. **Fix plan analysis via subagent:** Spawn another independent agent (software-architect role) to validate the fix plan. The subagent should ONLY read the review file — not the reviewer's or fix plan agent's reasoning chain. Pass it this prompt: "Read {{review_file_path}}. First, read ONLY the `### Issues Found` sections (under both `## Task X.Y` and `## Security Review`) and the cited source files. For each issue, design your own fix approach BEFORE reading the `### Fix Plan`. Then read the `### Fix Plan` and compare each proposed fix against your independently designed approach. For each fix, output Approve (approaches align) or Revise (your approach differs materially or the plan is flawed). Show both approaches side-by-side: 'My approach: ...' and 'Plan approach: ...'. Append your analysis as `### Fix Plan Analysis` under `## Review Discussion`."
+4. **STOP.** Tell the user:
    - "Review complete. Fix plan generated and independently analyzed."
    - "Review the fix plan and analysis in {{review_file_path}}."
    - "To apply fixes: `/agentic-dev:execute fix the issues according to {{review_file_path}}`"

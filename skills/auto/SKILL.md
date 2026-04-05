@@ -36,18 +36,21 @@ All tasks in PROGRESS.md are `done` AND no `feature/mM-waveW-*` branch exists �
 **2. Does a wave review file exist?**
 No → start at Step 1 (execute) if task review files are also missing, or Step 2 (review) if task review files exist for all tasks in the wave.
 
-**3. Does the wave review have issues?**
-Read the wave review file. Check each `## Task X.Y` section for `### Issues Found`. Count BLOCKER and SUGGESTION entries (ignore NITs).
-- Zero BLOCKERs and SUGGESTIONs → skip fix cycle, go to Step 6 (merge).
+**3. Does `## Security Review` exist in the wave review?**
+No → start at Step 2b (security review). The code review is already done (the wave review file exists).
+
+**4. Does the wave review have issues?**
+Read the wave review file. Check `### Issues Found` sections under both `## Task X.Y` headings (code review) AND `## Security Review` (security review). Count BLOCKER and SUGGESTION entries (ignore NITs).
+- Zero BLOCKERs and SUGGESTIONs across both reviews → skip fix cycle, go to Step 6 (merge).
 - Issues exist → continue checking.
 
-**4. Does `### Fix Plan` exist in the wave review?**
+**5. Does `### Fix Plan` exist in the wave review?**
 No → start at Step 3 (fix-plan-analysis).
 
-**5. Does `### Fix Results` exist in the wave review?**
+**6. Does `### Fix Results` exist in the wave review?**
 No → start at Step 4 (execute fixes).
 
-**6. Does `### Fix Verification` exist in the wave review?**
+**7. Does `### Fix Verification` exist in the wave review?**
 No → start at Step 5 (verify-fixes).
 Yes → read it. If all issues are marked "Fixed" → go to Step 6 (merge). If any are "Not Fixed" or "Regression" → **STOP and report** (see Failure Handling).
 
@@ -63,7 +66,21 @@ Run steps sequentially. After each step, verify the expected artifact exists bef
 
 Read the wave's task list from PLAN.md. Check the `Depends on:` field for each task. Classify tasks as **independent** (no intra-wave dependencies) or **dependent** (depends on another task in this wave).
 
-**If the wave has 1 task OR all tasks form a dependency chain:** spawn a single agent:
+**Agent role matching:** For each task, read the `Role:` field from PLAN.md. Map it to the corresponding agent type when launching:
+
+| Plan Role | Agent Type |
+|-----------|-----------|
+| backend-engineer | backend-engineer |
+| frontend-developer | frontend-developer |
+| data-engineer | data-engineer |
+| devops-engineer | devops-engineer |
+| security-engineer | security-engineer |
+| qa-engineer | qa-engineer |
+| senior-engineer | senior-engineer |
+
+For the single-agent wave case, use the role of the first task (or `senior-engineer` if the wave mixes roles). For per-task agents, each agent gets its task's specific role.
+
+**If the wave has 1 task OR all tasks form a dependency chain:** spawn a single agent (set agent type to the task's role):
 
 > You are running the execute step of an automated pipeline for milestone M, wave W.
 > Invoke `/agentic-dev:execute wave W`.
@@ -73,7 +90,7 @@ Read the wave's task list from PLAN.md. Check the `Depends on:` field for each t
 
 **If the wave has multiple independent tasks:** launch one agent per independent task. Send each agent in a **separate sequential message** with `isolation: "worktree"` and `run_in_background: true`. This staggers worktree creation to avoid git config lock contention. All agents run concurrently once launched — only the launch is serialized. Do NOT wait for each agent to fully complete before launching the next — that eliminates parallelism. Tasks that depend on other tasks in the wave must wait for their dependency to complete first.
 
-Per-task agent template:
+Per-task agent template (set agent type to the task's role from PLAN.md):
 
 > You are running the execute step of an automated pipeline for milestone M, task X.Y.
 > Invoke `/agentic-dev:execute task X.Y`.
@@ -89,7 +106,7 @@ Wait for all task agents to complete. Then merge each task branch into the featu
 
 **Step 2 — Review Wave**
 
-Spawn an independent agent with this prompt:
+Spawn an independent agent (code-reviewer role) with this prompt:
 
 > You are running the review step of an automated pipeline for milestone M, wave W.
 > Invoke `/agentic-dev:review wave W`.
@@ -97,15 +114,29 @@ Spawn an independent agent with this prompt:
 > OVERRIDE: Do not stop for human review or approval. Complete the full review.
 > When done, summarize the issues found (or confirm no issues).
 
-**Post-check:** Read the wave review file. If it exists and has `### Issues Found` sections:
-- Count BLOCKERs and SUGGESTIONs across all tasks. If zero → **short-circuit to Step 6**.
-- If issues exist → verify `### Fix Plan` was also generated (the review mode now spawns a subagent to generate it). If fix plan is missing, continue to Step 3 which will generate one as fallback. If fix plan exists → continue to Step 3 for analysis.
+**Post-check:** Read the wave review file. Verify it exists and has `## Summary`. Continue to Step 2b — security review is always performed regardless of whether the code review found issues.
+
+---
+
+**Step 2b — Security Review**
+
+Spawn an independent agent (security-reviewer role) with this prompt:
+
+> You are running a security review of an automated pipeline for milestone M, wave W.
+> Invoke `/agentic-dev:review security wave W`.
+> Follow the skill's instructions completely. Append your findings to the wave review file at `workflow/plan/reviews/wave-mM-N.md`.
+> OVERRIDE: Do not stop for human review or approval. Complete the full security review.
+> When done, summarize the security findings (or confirm no issues).
+
+**Post-check:** Read the wave review file. Check for `## Security Review` section. Now count BLOCKERs and SUGGESTIONs across BOTH the code review (`### Issues Found` under `## Task X.Y` sections) and security review (`### Issues Found` under `## Security Review`):
+- Zero BLOCKERs and SUGGESTIONs total → **short-circuit to Step 6** (merge).
+- If issues exist → verify `### Fix Plan` was also generated by the code review step. If fix plan is missing, continue to Step 3 which will generate one as fallback. If fix plan exists → continue to Step 3 for analysis. The fix plan must cover issues from both reviews.
 
 ---
 
 **Step 3 — Fix Plan Analysis**
 
-Spawn an independent agent with this prompt:
+Spawn an independent agent (software-architect role) with this prompt:
 
 > You are running the fix-plan-analysis step of an automated pipeline for milestone M, wave W.
 > Invoke `/agentic-dev:review fix-plan-analysis wave W`.
@@ -125,15 +156,16 @@ Spawn an independent agent with this prompt:
 > Invoke `/agentic-dev:execute fix the issues according to workflow/plan/reviews/wave-mM-N.md`.
 > Follow the skill's instructions completely. Apply all fixes from the fix plan.
 > OVERRIDE: Do not stop for human review or approval. Apply all fixes and report results.
+> IMPORTANT: Only apply fixes and report results. Do NOT verify fixes yourself — that is Step 5's job with a separate agent and clean context. The person who writes the fix must not be the one who verifies it.
 > When done, confirm which fixes were applied.
 
-**Post-check:** Read the wave review file. Verify `### Fix Results` exists under `## Review Discussion`. If missing, **STOP and report**.
+**Post-check:** Read the wave review file. Verify `### Fix Results` exists under `## Review Discussion`. If `### Fix Verification` also appears (the fix agent verified its own work), this is a process violation — proceed to Step 5 anyway for independent verification. If `### Fix Results` is missing, **STOP and report**.
 
 ---
 
 **Step 5 — Verify Fixes**
 
-Spawn an independent agent with this prompt:
+Spawn an independent agent (qa-engineer role) with this prompt:
 
 > You are running the verification step of an automated pipeline for milestone M, wave W.
 > Invoke `/agentic-dev:review verify-fixes wave W`.
@@ -188,7 +220,23 @@ For `auto milestone N`:
    b. **Run the full wave pipeline** (Steps 1-6) using artifact-based resume.
    c. **If the wave fails** (unresolved issues, merge conflict, missing artifact) → **STOP the milestone**. Report which wave failed and what went wrong.
    d. **If the wave succeeds** → log "Wave W complete" and advance to next wave.
-3. After all waves complete: "Milestone N complete. All waves executed, reviewed, and merged to main."
+3. After all waves complete, run **Step 7 — Verify & Retrospective**.
+
+---
+
+**Step 7 — Verify & Retrospective (milestone mode only)**
+
+Spawn an independent agent (qa-engineer role) with this prompt:
+
+> You are running end-to-end verification for milestone M after all waves have been merged.
+> Invoke `/agentic-dev:verify`.
+> Follow the skill's instructions completely. Run the full test suite, verify README.md, and generate the retrospective.
+> OVERRIDE: Do not stop for human review or approval. Complete the full verification and retrospective.
+> When done, confirm the retrospective file location and overall pass/fail status.
+
+**Post-check:** Verify `workflow/retro/RETRO-MN.md` exists. If the verify step found test failures, report them — the user decides whether to fix before the retrospective is finalized.
+
+Report: "Milestone N complete. All waves merged. Retrospective at `workflow/retro/RETRO-MN.md`."
 
 ---
 

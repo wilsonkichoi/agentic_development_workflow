@@ -57,7 +57,7 @@ Worktree-isolated parallel tasks branch from the feature branch — each agent g
 
 **ROLE:**
 
-Activate the appropriate agent role for the task type. See `/agents` for available roles:
+Activate the appropriate agent role for the task type. The orchestrating agent (auto skill or human) should set the agent type at launch time based on the task's `Role:` field in PLAN.md. If no agent type was set externally, read the task's `Role:` field and activate that role yourself. Available roles:
 - `backend-engineer` — API endpoints, service logic, database operations
 - `frontend-developer` — UI components, styling, client-side logic
 - `data-engineer` — data pipelines, ETL, schema migrations
