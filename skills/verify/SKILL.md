@@ -7,10 +7,6 @@ description: "Use for Phase 5 of the development workflow: verification and retr
 
 Executes Phase 5 (Verification & Retrospective) of the AI-Assisted Development Workflow.
 
-## Important
-
-**If a retrospective already exists but `workflow/retro/review.md` does not**, the phase was run before the review process was added. Create the review file now and ask the human to review before proceeding.
-
 ## Prompt
 
 **INPUTS:**
@@ -88,9 +84,14 @@ Check that README.md is complete and accurate for the current milestone. Ensure 
    - Workflow improvements
    - Decision records that should inform the next milestone's spec
 
+8. **Areas of Low Confidence**
+   - Sections where you had insufficient data or made assumptions
+   - Metrics or counts that are approximate
+   - Recommendations you're unsure about
+
 **OUTPUT FORMAT:**
 
-Markdown file for saving as `workflow/retro/RETRO-{{MILESTONE_NAME}}.md`
+Markdown file for saving as `workflow/retro/RETRO-{{MILESTONE_NAME}}.md`. End the file with an empty `## Review Discussion` section (same pattern as task review files) for human feedback.
 
 **CONSTRAINTS:**
 
@@ -101,11 +102,9 @@ Markdown file for saving as `workflow/retro/RETRO-{{MILESTONE_NAME}}.md`
 
 **HUMAN REVIEW PROCESS:**
 
-After you produce the retrospective, create `workflow/retro/review.md` with a brief summary of the retrospective and any areas where you had low confidence.
+After you produce the retrospective, **STOP and ask the human to review** `workflow/retro/RETRO-{{MILESTONE_NAME}}.md`. Do NOT proceed or suggest next steps.
 
-Then **STOP and ask the human to review.** Do NOT proceed or suggest next steps.
-
-The human will review the retrospective and may add `*FEEDBACK:*` comments in the review file.
+The human will review the retrospective and may add `*FEEDBACK:*` comments in the `## Review Discussion` section.
 
 - Respond with `*AI:*` comments explaining what was changed and why, then update the retrospective accordingly.
 - Do not overwrite previous discussion — append new responses below existing conversation.
