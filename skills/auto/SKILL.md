@@ -150,7 +150,7 @@ Spawn an independent agent (software-architect role) with this prompt:
 
 **Step 4 — Execute Fixes**
 
-Spawn an independent agent with this prompt:
+Spawn an independent agent with this prompt (the execute skill determines the correct role(s) in fix mode — see execute skill step 3):
 
 > You are running the fix execution step of an automated pipeline for milestone M, wave W.
 > Invoke `/agentic-dev:execute fix the issues according to workflow/plan/reviews/wave-mM-N.md`.

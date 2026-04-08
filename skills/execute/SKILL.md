@@ -156,14 +156,27 @@ If the user directs you to fix issues from a review file (e.g., `wave-mM-N.md` o
 
 1. Read the review file. Find `### Issues Found` sections (under each `## Task X.Y` heading in wave reviews, or under `## Code Review` in task reviews).
 2. Read any fix plan discussion in `## Review Discussion` — look for `### Fix Plan` and any `### Fix Plan Analysis` entries. If multiple AIs analyzed the plan, synthesize their feedback. If a fix was flagged as "revise", follow the revised approach.
-3. **Branch from the feature branch** if one exists for this wave. Fix branches should be created from the feature branch, not from `main`:
+3. **Role matching for fixes:** Determine the correct agent role(s) before implementing.
+   - **Task review** (`task-X.Y.md`): Read task X.Y's `Role:` field from PLAN.md. Activate that role and continue to step 4.
+   - **Wave review** (`wave-mM-N.md`): Map each issue to a role:
+     - Issues under `## Task X.Y` headings → task X.Y's `Role:` from PLAN.md.
+     - Issues under `## Security Review` → trace the `file:line` to the task whose `Files:` list in PLAN.md includes that file, use that task's role. If no task matches, use `security-engineer`.
+     - Group by role: `{role: [issue IDs]}`.
+   - **Single role** (common case): Activate that role and continue to step 4.
+   - **Multiple roles**: Spawn one fix sub-agent per role, **sequentially** (all agents append to the same review file — parallel writes would conflict). Each sub-agent:
+     - Gets the correct agent type (role) set at launch.
+     - Is scoped to its issue IDs only: "Only fix issues [B1], [S2]. Leave other issues for a separate agent."
+     - Creates its own fix branch: `fix/wave-W-{{role}}` (e.g., `fix/wave-2-backend`, `fix/wave-2-frontend`).
+     - Runs steps 4–7 independently for its scoped issues, appending its own `### Fix Results` section.
+     After all sub-agents complete, report combined results: "Fixes applied by N role-specific agents: role1 ([B1], [S2]), role2 ([S4])." Then STOP.
+4. **Branch from the feature branch** if one exists for this wave. Fix branches should be created from the feature branch, not from `main`:
    ```
    git checkout feature/m{{M}}-wave{{W}}-{{short-description}}
    git checkout -b fix/{{X.Y}}-{{issue-title}}
    ```
    If running multiple fix tasks in parallel, use worktree isolation branching from the feature branch (use parallel launch — see note above). If no feature branch exists (single-task fix), branch from `main`.
-4. Implement all approved fixes. Run verification commands (lint, type check, tests, acceptance criteria).
-5. Append `### Fix Results` under `## Review Discussion` in the review file:
+5. Implement all approved fixes. If scoped to specific issue IDs by an orchestrating agent, only fix those issues — skip others and do not include them in the Fix Results. Run verification commands (lint, type check, tests, acceptance criteria).
+6. Append `### Fix Results` under `## Review Discussion` in the review file:
 
    ```
    ### Fix Results ({{AI model/tool}} — {{DATE}})
@@ -183,7 +196,7 @@ If the user directs you to fix issues from a review file (e.g., `wave-mM-N.md` o
    - {{test command}} — PASS/FAIL
    ```
 
-6. **STOP.** Do NOT merge, do NOT create a PR. Report what was fixed and the verification results. Tell the user:
+7. **STOP.** Do NOT merge, do NOT create a PR. Report what was fixed and the verification results. Tell the user:
    - "Fixes applied on branch `fix/X.Y-issue-title`. Verification: {{results}}."
    - "To verify independently: `/agentic-dev:review verify-fixes wave N`"
    - "To merge after verification: instruct me to merge."
