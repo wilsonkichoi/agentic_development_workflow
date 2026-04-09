@@ -41,7 +41,22 @@ Check task dependencies within the wave (each task block has a `Depends on:` fie
    ```
 4. If the next task depends on a completed task in the same wave, that dependency is already merged into the feature branch — no extra merge needed.
 
-Worktree-isolated parallel tasks branch from the feature branch — each agent gets its own worktree with the feature branch as base.
+**Wave branch lifecycle (parallel worktree tasks):**
+
+After all parallel worktree agents complete:
+
+1. **Merge each task branch into the feature branch** (in dependency order if any exist):
+   ```
+   git checkout feature/m{{M}}-wave{{W}}-{{short-description}}
+   git merge task/X.Y-short-title
+   git branch -d task/X.Y-short-title
+   ```
+   Repeat for each parallel task.
+2. **Clean up worktree tracking branches** — these are platform artifacts created by `isolation: "worktree"`, not task branches:
+   ```
+   git branch -D worktree-agent-* 2>/dev/null || true
+   ```
+3. Continue with any dependent tasks that were waiting on the parallel batch.
 
 **Note:** If executing individual tasks sequentially (not as a wave), each task follows the single-task flow — branch from `main`, review individually, merge to `main`. Use `execute wave N` when you want batch review with feature branch isolation.
 

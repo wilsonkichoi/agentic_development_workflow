@@ -98,7 +98,12 @@ Per-task agent template (set agent type to the task's role from PLAN.md):
 > OVERRIDE: Do not stop for human review or approval. Complete the task and its task review file.
 > When done, confirm what was implemented and the task status.
 
-Wait for all task agents to complete. Then merge each task branch into the feature branch (in dependency order if any exist) before proceeding to Step 2.
+Wait for all task agents to complete. Then merge each task branch into the feature branch (in dependency order if any exist). After merging, delete task branches and worktree tracking branches — the latter are platform artifacts from `isolation: "worktree"`:
+```
+git branch -d task/X.Y-short-title   # for each merged task
+git branch -D worktree-agent-* 2>/dev/null || true
+```
+Proceed to Step 2.
 
 **Post-check:** Verify `workflow/plan/reviews/task-X.Y.md` exists for each task in the wave. Verify PROGRESS.md shows those tasks at status `review`. If any task review is missing, **STOP and report**.
 
@@ -200,7 +205,10 @@ The orchestrator performs this step directly (no subagent needed):
    ```
    git branch -d feature/mM-waveW-short-description
    ```
-   Delete any remaining task branches for this wave.
+   Delete any remaining task branches (`task/X.Y-*`) and worktree tracking branches (`worktree-agent-*`) for this wave:
+   ```
+   git branch -D worktree-agent-* 2>/dev/null || true
+   ```
 
 4. **Verify:** Confirm you are on `main` and the feature branch no longer exists.
 
