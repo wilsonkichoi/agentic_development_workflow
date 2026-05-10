@@ -2,7 +2,7 @@
 
 A structured, 5-phase framework for building software with AI coding agents. Gives LLMs clear specifications, atomic tasks, and role-matched expertise — so you get predictable, high-quality output instead of hoping the AI figures it out.
 
-> **Note:** I created this project to better understand agentic software development methodology. There may be a bunch of stupid stuff here. For real projects, check out [Superpowers](https://github.com/obra/superpowers), [GSD](https://github.com/gsd-build/get-shit-done), [Spec Kit](https://github.com/github/spec-kit), [EPCC](https://github.com/aws-solutions-library-samples/guidance-for-claude-code-with-amazon-bedrock/blob/main/assets/claude-code-plugins/README.md), [oh-my-claudecode](https://github.com/Yeachan-Heo/oh-my-claudecode), [Compound Engineering](https://github.com/EveryInc/compound-engineering-plugin) and incorporate whatever works for you.
+> **Note:** I created this project to better understand agentic software development methodology. There may be a bunch of stupid stuff here. For real projects, check out [Superpowers](https://github.com/obra/superpowers), [GSD](https://github.com/gsd-build/get-shit-done), [Spec Kit](https://github.com/github/spec-kit), [EPCC](https://github.com/aws-solutions-library-samples/guidance-for-claude-code-with-amazon-bedrock/blob/main/assets/claude-code-plugins/README.md), [oh-my-claudecode](https://github.com/Yeachan-Heo/oh-my-claudecode), [Compound Engineering](https://github.com/EveryInc/compound-engineering-plugin), [Agent Skills](https://github.com/addyosmani/agent-skills) and incorporate whatever works for you.
 
 ## The Problem
 
@@ -233,6 +233,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, testing checklist,
 - [Agency Agents](https://github.com/msitarzewski/agency-agents) — role-based agent definitions (adapted into `agents/`)
 - [PUA](https://github.com/tanweai/pua) — debugging persistence framework (adapted into Phase 4)
 - [Compound Engineering](https://github.com/EveryInc/compound-engineering-plugin) — Agent-Driven Development using the power of LLM.
+- [Agent Skills](https://github.com/addyosmani/agent-skills) — Production-grade engineering skills for AI coding agents.
 
 ## License
 
